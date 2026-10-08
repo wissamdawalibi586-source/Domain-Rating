@@ -4,6 +4,7 @@ services:
     name: domains-rating
     runtime: node
     plan: free
+    region: frankfurt     # نفس منطقة قاعدة Neon (AWS eu-central-1)
     buildCommand: npm install --omit=dev
     startCommand: npm start
     healthCheckPath: /api/health

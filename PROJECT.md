@@ -157,7 +157,7 @@
 
 **أ) قاعدة البيانات على Neon**
 1. سجّل في [neon.tech](https://neon.tech) (يمكن بحساب GitHub).
-2. **Create project** ← الاسم `domains-rating` ← المنطقة الأقرب (مثلاً Frankfurt / AWS eu-central-1).
+2. **Create project** ← الاسم `domains-rating` ← المنطقة: **AWS Europe Central 1 (Frankfurt)** (نفس منطقة Render في `render.yaml`) ← فعّل **Postgres database** فقط، واترك الباقي (Object storage, Functions, AI gateway, Neon Auth) مطفأً.
 3. من **Connection Details** انسخ **Connection string**، شكله:
    `postgresql://user:password@ep-xxx.eu-central-1.aws.neon.tech/neondb?sslmode=require`
    (لا تحتاج إنشاء جداول: الخادم ينشئ جدول `ratings` وحده عند أول تشغيل.)
