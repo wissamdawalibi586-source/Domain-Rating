@@ -1,0 +1,17 @@
+{
+  "name": "domains-rating",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Domains rating page + admin dashboard (Express + PostgreSQL/Neon)",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "pg": "^8.13.1"
+  }
+}

@@ -1,7 +1,7 @@
 # Domains Rating — وثيقة المشروع
 
 > هذا الملف هو **المرجع الأساسي** للمشروع. نحدّثه مع كل جلسة عمل لنكمل من حيث توقفنا.
-> آخر تحديث: 2026-10-08 — **الإصدار 0.1 (نسخة مبدئية)**
+> آخر تحديث: 2026-10-08 — **الإصدار 0.2 (Render + Neon)**
 
 ---
 
@@ -17,7 +17,8 @@
 |---|---|---|
 | صفحة التقييم | الطلاب (عامة) | `index.html` |
 | لوحة الإدارة | المسؤول (بكلمة سر) | `admin/index.html` |
-| الخادم / قاعدة البيانات | Google Sheet | `backend/google-apps-script.gs` |
+| الخادم (API) | Render | `server/server.js` |
+| قاعدة البيانات | Neon (PostgreSQL) | جدول `ratings` يُنشأ تلقائياً |
 
 ---
 
@@ -65,7 +66,7 @@
 - **وسيلة تواصل اختيارية** لمن يريد رداً.
 
 **تعديل التصنيفات:** كلها في ملف واحد `assets/js/categories.js` — تعديله يحدّث صفحة التقييم ولوحة الإدارة معاً.
-⚠️ لا تغيّر `id` أي تصنيف بعد بدء جمع البيانات (وإن أضفت تصنيفاً جديداً، أضفه أيضاً في قائمة `HEADERS` وفي `doPost` داخل ملف Apps Script).
+⚠️ لا تغيّر `id` أي تصنيف بعد بدء جمع البيانات (البيانات القديمة مخزنة بالمعرّف القديم). إضافة تصنيف جديد لا تحتاج أي تعديل في قاعدة البيانات.
 
 ---
 
@@ -114,75 +115,140 @@
 
 ---
 
-## 6. التشغيل والنشر
+## 6. البنية والنشر على الإنترنت
 
-### 6.1 الوضعان
-- **تجريبي** (الحالي): `API_URL` فارغ في `assets/js/config.js` ← التقييمات تُحفظ في متصفح نفس الجهاز فقط. مناسب للمعاينة والنقاش.
-- **حقيقي:** بعد ربط Google Sheet (الخطوة 6.3) ← كل التقييمات من كل الأجهزة تصل لجدول واحد، واللوحة تقرأ منه.
-
-### 6.2 النشر على الإنترنت (GitHub Pages — مجاني)
-1. ادمج الفرع `claude/awesome-ride-pemlwd` في `main` (أو اجعله الفرع الافتراضي).
-2. في GitHub: **Settings ← Pages ← Build and deployment**
-   - Source: **Deploy from a branch** — Branch: **main** — Folder: **/ (root)** ← Save.
-3. بعد دقيقة تقريباً تصبح الروابط:
-   - صفحة الطلاب: `https://wissamdawalibi586-source.github.io/Domain-Rating/`
-   - لوحة الإدارة: `https://wissamdawalibi586-source.github.io/Domain-Rating/admin/`
-
-**لتصبح الروابط باسم `Domains-rating`:** أعِد تسمية المستودع إلى `Domains-rating` (Settings ← Repository name) فيصبح الرابط `…github.io/Domains-rating/` واللوحة `…github.io/Domains-rating/admin/`.
-خيارات أخرى للنقاش: دومين خاص (مثل `rating.domains.xx`)، أو رابط قصير، أو استضافة على Netlify/Vercel باسم `domains-rating.netlify.app` و`domains-rating-admin`.
-
-### 6.3 ربط قاعدة البيانات (Google Sheet)
-1. أنشئ Google Sheet جديد باسم `Domains Ratings`.
-2. من القائمة: **Extensions ← Apps Script**، احذف الموجود والصق محتوى `backend/google-apps-script.gs` ← حفظ.
-3. **Deploy ← New deployment** ← النوع: **Web app**
-   - Execute as: **Me** — Who has access: **Anyone** ← Deploy ← وافق على الصلاحيات.
-4. انسخ **Web app URL** (ينتهي بـ `/exec`).
-5. ضعه في `assets/js/config.js`: `API_URL: "https://script.google.com/macros/s/…/exec"` ← ارفع التعديل.
-6. ستظهر التقييمات كصفوف في ورقة `Responses` (عمود لكل تصنيف + عمود JSON كامل).
-
-> عند تعديل كود Apps Script لاحقاً: **Deploy ← Manage deployments ← Edit ← New version** ليبقى نفس الرابط.
-
-### 6.4 التشغيل محلياً
-```bash
-python3 -m http.server 8000
-# ثم افتح http://localhost:8000  و  http://localhost:8000/admin/
+### 6.1 الصورة الكاملة
 ```
+  الطالب (موبايل)                 المسؤول
+        │                            │
+        ▼                            ▼
+  domains-rating.onrender.com    …onrender.com/admin/
+        └──────────────┬─────────────┘
+                       ▼
+        ┌──────────────────────────────┐
+        │  Render — خادم Node.js         │  يقدّم الصفحات + واجهة /api
+        │  server/server.js             │  يفحص كلمة السر ويتحقق من البيانات
+        └──────────────┬───────────────┘
+                       ▼  (اتصال مشفّر SSL)
+        ┌──────────────────────────────┐
+        │  Neon — قاعدة PostgreSQL       │  جدول ratings: كل التقييمات
+        └──────────────────────────────┘
+                       ▲
+  GitHub (الكود) ──── كل push ← Render يعيد النشر تلقائياً
+```
+
+- **GitHub:** مكان حفظ الكود فقط.
+- **Render:** كمبيوتر بالسحابة يسحب الكود من GitHub ويشغّله 24/7، ويعطيه رابطاً عاماً `https://….onrender.com`. كل ما نرفع تعديلاً على الفرع المربوط، يعيد Render النشر وحده خلال دقيقة أو دقيقتين.
+- **Neon:** قاعدة بيانات PostgreSQL سحابية. Render يتصل بها عبر رابط سري (`DATABASE_URL`) محفوظ في إعدادات Render، وليس في الكود.
+
+**لماذا Neon وليس قاعدة بيانات Render؟** حسب سياسة Render الحالية، قاعدة PostgreSQL المجانية تنتهي صلاحيتها بعد 30 يوماً وتُحذف بياناتها. خطة Neon المجانية دائمة، وفيها حوالي 0.5GB تكفي لمئات آلاف التقييمات.
+
+**ملاحظة عن خطة Render المجانية:** الخادم "ينام" بعد 15 دقيقة بلا زيارات، وأول زيارة بعدها تأخذ من 30 إلى 50 ثانية حتى يستيقظ. الحلول: الترقية إلى خطة Starter (حوالي 7$ شهرياً) فيبقى صاحياً دائماً، أو خدمة مراقبة مجانية مثل UptimeRobot تزور `/api/health` كل 10 دقائق.
+
+### 6.2 الواجهة البرمجية (API)
+| الطلب | الوظيفة | الحماية |
+|---|---|---|
+| `GET /api/health` | فحص الخادم والاتصال بقاعدة البيانات | عام |
+| `POST /api/ratings` | حفظ تقييم | عام — 10 طلبات بالساعة لكل IP + تحقق من كل القيم |
+| `POST /api/admin/login` | دخول الإدارة ← رمز جلسة صالح 12 ساعة | 8 محاولات كل 15 دقيقة لكل IP |
+| `GET /api/ratings` | كل التقييمات | رمز الجلسة فقط |
+
+### 6.3 خطوات النشر (مرة واحدة، حوالي 10 دقائق)
+
+**أ) قاعدة البيانات على Neon**
+1. سجّل في [neon.tech](https://neon.tech) (يمكن بحساب GitHub).
+2. **Create project** ← الاسم `domains-rating` ← المنطقة الأقرب (مثلاً Frankfurt / AWS eu-central-1).
+3. من **Connection Details** انسخ **Connection string**، شكله:
+   `postgresql://user:password@ep-xxx.eu-central-1.aws.neon.tech/neondb?sslmode=require`
+   (لا تحتاج إنشاء جداول: الخادم ينشئ جدول `ratings` وحده عند أول تشغيل.)
+
+**ب) الخادم على Render**
+1. سجّل في [render.com](https://render.com) بحساب GitHub.
+2. **New ← Blueprint** ← اختر المستودع `Domain-Rating` ← سيقرأ Render ملف `render.yaml` تلقائياً.
+   - (بديل يدوي: **New ← Web Service** ← المستودع ← Build: `npm install --omit=dev` ← Start: `npm start`.)
+3. سيطلب قيمتين:
+   - `DATABASE_URL` ← الصق رابط Neon.
+   - `ADMIN_PASSWORD` ← `wiss` (أو كلمة أقوى).
+   - `SESSION_SECRET` يولّده Render وحده.
+4. **Apply / Deploy** ← انتظر حتى تظهر الحالة **Live**.
+5. الروابط:
+   - صفحة الطلاب: `https://domains-rating.onrender.com`
+   - لوحة الإدارة: `https://domains-rating.onrender.com/admin` (ويعمل أيضاً `/domains-rating-admin`)
+   > اسم الرابط يأتي من اسم الخدمة في Render. إن كان `domains-rating` محجوزاً فسيضيف Render لاحقة، أو غيّر الاسم.
+6. **الفرع:** اربط Render بالفرع `main` بعد دمج العمل، أو مؤقتاً بالفرع `claude/awesome-ride-pemlwd`.
+
+**ج) (اختياري) دومين خاص:** في Render ← Settings ← Custom Domains ← أضف مثلاً `rating.domains.sy` واتبع تعليمات DNS. شهادة HTTPS مجانية وتلقائية.
+
+### 6.4 الوضع التجريبي
+إذا فُتحت الصفحات بدون خادم (ملف مباشر، أو GitHub Pages) تعمل في **الوضع التجريبي**: التقييمات على نفس الجهاز فقط، وكلمة السر `wiss` تُفحص في المتصفح، وتظهر أزرار «توليد بيانات تجريبية». الكشف تلقائي عبر `/api/health`.
+
+### 6.5 التشغيل محلياً
+```bash
+npm install
+cp .env.example .env          # وضع رابط Neon (أو Postgres محلي) وكلمة السر
+export $(cat .env | xargs) && npm start
+# http://localhost:3000   و   http://localhost:3000/admin/
+```
+
+### 6.6 الاطلاع على البيانات مباشرة
+- **Neon ← SQL Editor:** `SELECT * FROM ratings ORDER BY created_at DESC;`
+- أو من لوحة الإدارة ← **تصدير Excel**.
 
 ---
 
-## 7. الأمان — ملاحظات مهمة
-- كلمة سر الصفحة تُفحص في المتصفح (بصمة SHA-256)، **والحماية الحقيقية في الخادم**: Apps Script لا يعيد أي بيانات إلا مع كلمة السر الصحيحة (`ADMIN_KEY`).
-- `wiss` كلمة سر قصيرة — يُنصح بتغييرها لاحقاً لكلمة أقوى:
-  1. احسب بصمتها: `echo -n "كلمة_جديدة" | sha256sum` ← ضعها في `ADMIN_PASSWORD_HASH` في `config.js`.
-  2. غيّر `ADMIN_KEY` في Apps Script وانشر نسخة جديدة.
-- كلمة السر ليست مكتوبة نصاً في كود الموقع (فقط بصمتها)، لكنها مكتوبة في Apps Script (وهو خاص بحساب Google).
-- لوحة الإدارة عليها `noindex` كي لا تظهر في محركات البحث.
+## 7. الأمان
+- كلمة سر الإدارة **لا توجد في كود الموقع إطلاقاً**؛ مكانها متغير `ADMIN_PASSWORD` في Render، وتُفحص على الخادم.
+- بعد الدخول يحصل المتصفح على **رمز جلسة موقّع** (HMAC) صالح 12 ساعة، ولا تُحفظ كلمة السر في المتصفح.
+- حماية من التخمين: 8 محاولات دخول كل 15 دقيقة لكل IP.
+- كل قيمة تُفحص على الخادم (الدرجات 1–5، NPS 0–10، أطوال النصوص)، والنصوص تُعرض مهرّبة (escaped) في اللوحة.
+- ملفات الخادم (`server/`، `package.json`، `.env`…) محجوبة عن المتصفح.
+- لا نخزّن عنوان IP، فقط بصمة مختصرة منه للتحليل.
+- `wiss` كلمة قصيرة؛ لتغييرها: Render ← Environment ← `ADMIN_PASSWORD` ← Save (يعيد النشر تلقائياً).
+- `DEMO_PASSWORD_HASH` في `config.js` خاص بالوضع التجريبي فقط.
 
 ---
 
 ## 8. هيكل الملفات
 ```
-index.html                    صفحة تقييم الطلاب
-admin/index.html              لوحة الإدارة
-assets/css/style.css          التصميم والهوية البصرية (للصفحتين)
-assets/js/config.js           الإعدادات: رابط الخادم، كلمة السر، فترة التكرار، روابط
-assets/js/categories.js       التصنيفات والمسارات والأيقونات (عدّل هنا)
-assets/js/store.js            الحفظ والقراءة (تجريبي / Google Sheet) + بيانات تجريبية
-assets/js/rate.js             منطق صفحة التقييم
-assets/js/admin.js            منطق لوحة الإدارة والرسوم البيانية
-assets/img/                   رمز الشعار SVG
-assets/brand/                 صور الهوية الأصلية
-backend/google-apps-script.gs كود الخادم لـ Google Sheets
-PROJECT.md                    هذه الوثيقة
+index.html                صفحة تقييم الطلاب
+admin/index.html          لوحة الإدارة
+assets/css/style.css      التصميم والهوية البصرية
+assets/js/config.js       الإعدادات: عنوان API، فترة التكرار، روابط
+assets/js/categories.js   التصنيفات والمسارات والأيقونات (عدّل هنا)
+assets/js/store.js        الاتصال بالخادم / الوضع التجريبي
+assets/js/rate.js         منطق صفحة التقييم
+assets/js/admin.js        منطق لوحة الإدارة والرسوم
+assets/img/               رمز الشعار SVG
+assets/brand/             صور الهوية الأصلية
+server/server.js          خادم Express: API + تقديم الصفحات + إنشاء الجدول
+package.json              تبعيات Node (express, pg)
+render.yaml               إعداد النشر على Render (Blueprint)
+.env.example              نموذج متغيرات البيئة
+PROJECT.md                هذه الوثيقة
 ```
-بدون أي مكتبات أو بناء (build) — HTML/CSS/JS خالص، يعمل على أي استضافة ثابتة.
+
+**جدول قاعدة البيانات `ratings`:**
+| العمود | النوع | الوصف |
+|---|---|---|
+| id | TEXT | معرّف التقييم |
+| created_at | TIMESTAMPTZ | وقت الإرسال (من الخادم) |
+| visit | TEXT[] | سبب الزيارة |
+| scores | JSONB | `{"clean":5,"quiet":4,…}` |
+| tracks | JSONB | `{"event":{"score":5,"name":"…"}}` |
+| nps | SMALLINT | 0–10 |
+| good / improve / contact | TEXT | النصوص الحرة |
+| client_hash | TEXT | بصمة مختصرة للجهاز/الشبكة |
+
+> إضافة تصنيف جديد لا تحتاج تعديل قاعدة البيانات، لأن `scores` من نوع JSONB. يكفي تعديل `categories.js`.
 
 ---
 
 ## 9. سجل القرارات
 | التاريخ | القرار |
 |---|---|
-| 2026-10-08 | موقع ثابت على GitHub Pages + Google Sheet كقاعدة بيانات (مجاني، والإدارة ترى البيانات في جدول مألوف). |
+| 2026-10-08 | ~~GitHub Pages + Google Sheet~~ ← استُبدل في الإصدار 0.2. |
+| 2026-10-08 | **Render** لتشغيل الخادم والصفحات + **Neon** (PostgreSQL) لقاعدة البيانات، بطلب من المستخدم. Neon بدل قاعدة Render لأن قاعدة Render المجانية تُحذف بعد 30 يوماً. |
+| 2026-10-08 | كلمة سر الإدارة تُفحص على الخادم مع رموز جلسة موقّعة بدل الفحص في المتصفح. |
 | 2026-10-08 | مقياس 1–5 بوجوه تعبيرية بدل النجوم (أوضح وأسرع على الموبايل). |
 | 2026-10-08 | تقسيم الأسئلة إلى 5 خطوات قصيرة بدل صفحة طويلة. |
 | 2026-10-08 | أسئلة التطبيق والسوشيال اختيارية («لم أجرّب») حتى لا تُفسد المتوسطات. |
@@ -193,8 +259,9 @@ PROJECT.md                    هذه الوثيقة
 ## 10. نقاط مفتوحة للنقاش / الخطوات القادمة
 - [ ] مراجعة صياغة التصنيفات وتأكيدها أو تعديلها.
 - [ ] الاحتفاظ بـ NPS وسبب الزيارة ومسار التطوع؟
-- [ ] اختيار شكل الرابط النهائي (إعادة تسمية المستودع / دومين خاص).
-- [ ] تفعيل GitHub Pages وربط Google Sheet (الخطوتان 6.2 و6.3).
+- [ ] إنشاء مشروع Neon وخدمة Render (القسم 6.3).
+- [ ] اختيار الرابط النهائي (`domains-rating.onrender.com` أو دومين خاص).
+- [ ] قرار: خطة Render المجانية (نوم بعد 15 دقيقة) أم Starter؟
 - [ ] تغيير كلمة سر الإدارة لكلمة أقوى.
 - [ ] روابط إنستغرام والتطبيق لشاشة الشكر (`LINKS` في `config.js`).
 - [ ] رمز QR للصفحة لطباعته ووضعه في القاعات.

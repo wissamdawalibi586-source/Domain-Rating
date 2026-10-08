@@ -189,9 +189,9 @@
       if (CFG.LINKS && CFG.LINKS.app) links += '<a class="btn small" href="' + CFG.LINKS.app + '" target="_blank" rel="noopener">افتح تطبيق دومينز</a>';
       $("#thanksLinks").innerHTML = links;
       go(THANKS);
-    }).catch(function () {
+    }).catch(function (err) {
       btn.disabled = false; btn.textContent = "إرسال التقييم";
-      toast("تعذّر الإرسال — تحقّق من الاتصال وحاول مجدداً");
+      toast(err && err.status === 429 ? err.message : "تعذّر الإرسال — تحقّق من الاتصال وحاول مجدداً");
     });
   }
 
@@ -203,12 +203,14 @@
 
   /* ---------- البدء ---------- */
   buildVisit(); buildGroups(); buildTracks(); buildNps(); go(0);
-  if (Store.isDemo()) $("#demoBanner").hidden = false;
-  var cd = Number(CFG.RATE_COOLDOWN_HOURS || 0), since = Store.hoursSinceLast();
-  if (!Store.isDemo() && cd && since < cd) {
-    var n = $("#cooldownNote");
-    n.hidden = false;
-    n.textContent = "سبق أن أرسلت تقييماً قبل قليل — شكراً لك! يمكنك إرسال تقييم جديد بعد " + Math.ceil(cd - since) + " ساعة.";
-    $("#nextBtn").disabled = true;
-  }
+  Store.init().then(function () {
+    if (Store.isDemo()) $("#demoBanner").hidden = false;
+    var cd = Number(CFG.RATE_COOLDOWN_HOURS || 0), since = Store.hoursSinceLast();
+    if (!Store.isDemo() && cd && since < cd) {
+      var n = $("#cooldownNote");
+      n.hidden = false;
+      n.textContent = "سبق أن أرسلت تقييماً قبل قليل — شكراً لك! يمكنك إرسال تقييم جديد بعد " + Math.ceil(cd - since) + " ساعة.";
+      $("#nextBtn").disabled = true;
+    }
+  });
 })();

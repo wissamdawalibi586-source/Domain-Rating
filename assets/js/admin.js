@@ -4,32 +4,23 @@
 (function () {
   var CFG = window.DOMAINS_CONFIG, Store = window.DomainsStore, icon = window.domainsIcon;
   var ITEMS = window.domainsAllItems(), TRACKS = window.DOMAINS_TRACKS, VISIT = window.DOMAINS_VISIT, SCALE = window.DOMAINS_SCALE;
-  var SESSION_KEY = "domains_admin_session";
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
 
-  var all = [], password = "", range = 30, visit = "", search = "";
+  var all = [], range = 30, visit = "", search = "";
 
-  function ss(op, k, v) { try { return op === "get" ? sessionStorage.getItem(k) : op === "set" ? sessionStorage.setItem(k, v) : sessionStorage.removeItem(k); } catch (e) { return null; } }
   function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
   function mean(a) { return a.length ? a.reduce(function (x, y) { return x + y; }, 0) / a.length : null; }
   function fmt(x, d) { return x == null || isNaN(x) ? "–" : x.toFixed(d == null ? 1 : d); }
 
   /* ---------- الدخول ---------- */
-  function sha256(text) {
-    if (!(window.crypto && crypto.subtle)) return Promise.reject(new Error("insecure"));
-    return crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)).then(function (buf) {
-      return Array.prototype.map.call(new Uint8Array(buf), function (b) { return ("0" + b.toString(16)).slice(-2); }).join("");
-    });
-  }
-
   $("#loginForm").addEventListener("submit", function (e) {
     e.preventDefault();
-    var pw = $("#pw").value; $("#loginErr").textContent = "";
-    sha256(pw).then(function (h) {
-      if (h !== CFG.ADMIN_PASSWORD_HASH) { $("#loginErr").textContent = "كلمة السر غير صحيحة"; return; }
-      password = pw; ss("set", SESSION_KEY, pw); enter();
-    }).catch(function () { $("#loginErr").textContent = "افتح الصفحة عبر رابط https لتسجيل الدخول"; });
+    var btn = $("#loginForm button"); btn.disabled = true; $("#loginErr").textContent = "";
+    Store.init().then(function () { return Store.login($("#pw").value); })
+      .then(enter)
+      .catch(function (err) { $("#loginErr").textContent = err.message || "تعذّر تسجيل الدخول"; })
+      .then(function () { btn.disabled = false; });
   });
 
   function enter() {
@@ -38,7 +29,7 @@
     load();
   }
 
-  $("#logoutBtn").addEventListener("click", function () { ss("del", SESSION_KEY); location.reload(); });
+  $("#logoutBtn").addEventListener("click", function () { Store.logout(); location.reload(); });
   $("#refreshBtn").addEventListener("click", load);
   $("#seedBtn").addEventListener("click", function () { Store.seedDemo(80).then(load); });
   $("#clearBtn").addEventListener("click", function () { if (confirm("مسح كل البيانات التجريبية على هذا الجهاز؟")) { Store.clearDemo(); load(); } });
@@ -56,10 +47,11 @@
 
   function load() {
     $("#dash").innerHTML = '<div class="card empty-state"><p class="muted">جارٍ تحميل التقييمات…</p></div>';
-    Store.list(password).then(function (rows) {
+    Store.list().then(function (rows) {
       all = rows.filter(function (r) { return r && r.ts; }).sort(function (a, b) { return a.ts < b.ts ? 1 : -1; });
       render();
     }).catch(function (err) {
+      if (err.status === 401) { Store.logout(); location.reload(); return; }
       $("#dash").innerHTML = '<div class="card empty-state"><p>تعذّر جلب البيانات</p><p class="muted">' + esc(err.message) + "</p></div>";
     });
   }
@@ -272,6 +264,5 @@
   });
 
   /* ---------- البدء ---------- */
-  var saved = ss("get", SESSION_KEY);
-  if (saved) sha256(saved).then(function (h) { if (h === CFG.ADMIN_PASSWORD_HASH) { password = saved; enter(); } }).catch(function () {});
+  Store.init().then(function () { if (Store.hasSession()) enter(); });
 })();

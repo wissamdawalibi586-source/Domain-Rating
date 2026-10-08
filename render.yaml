@@ -1,0 +1,19 @@
+# Render Blueprint — ينشئ خدمة الويب تلقائياً من المستودع
+services:
+  - type: web
+    name: domains-rating
+    runtime: node
+    plan: free
+    buildCommand: npm install --omit=dev
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_URL
+        sync: false          # الصق رابط Neon عند الإنشاء
+      - key: ADMIN_PASSWORD
+        sync: false          # كلمة سر لوحة الإدارة (مثلاً wiss)
+      - key: SESSION_SECRET
+        generateValue: true  # يولّده Render تلقائياً
