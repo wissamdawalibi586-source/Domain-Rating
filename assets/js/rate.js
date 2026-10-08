@@ -8,6 +8,7 @@
   var LAST_STEP = 5, THANKS = 6;
 
   var state = { step: 0, visit: [], scores: {}, skipped: {}, tracks: {}, nps: null };
+  var ACTS = {}; // أسماء التدريبات والفعاليات حسب المسار (من لوحة الإدارة)
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
 
@@ -55,10 +56,23 @@
       return '<div class="card q track-q" id="q-track-' + t.id + '">' +
         '<div class="q-head"><div class="q-icon">' + icon(t.icon) + '</div><div><p class="q-title">' + t.question + "</p>" +
         '<p class="q-hint">المحتوى، المدرب أو المنظّم، والفائدة التي خرجت بها.</p></div></div>' +
-        '<input class="field" data-track-name="' + t.id + '" maxlength="80" placeholder="' + t.placeholder + '" value="' + escAttr(tr.name || "") + '">' +
+        nameField(t, tr) +
         scaleHtml("track:" + t.id) + "</div>";
     }).join("");
     sel.forEach(function (t) { if (state.tracks[t.id].score) markScale("track:" + t.id, state.tracks[t.id].score); });
+  }
+
+  /* قائمة منسدلة إذا أضافت الإدارة أسماء لهذا المسار، وإلا حقل نص حر */
+  function nameField(t, tr) {
+    var list = ACTS[t.id] || [];
+    var input = '<input class="field" data-track-name="' + t.id + '" maxlength="80" placeholder="' + t.placeholder + '" value="' + escAttr(tr.name || "") + '"';
+    if (!list.length) return input + ">";
+    var other = tr.pick === "__other";
+    return '<select class="field" data-track-pick="' + t.id + '" aria-label="' + t.placeholder + '">' +
+      '<option value="">' + t.placeholder.replace("اسم", "اختر") + "</option>" +
+      list.map(function (n) { return '<option value="' + escAttr(n) + '"' + (tr.pick === n ? " selected" : "") + ">" + escAttr(n) + "</option>"; }).join("") +
+      '<option value="__other"' + (other ? " selected" : "") + ">أخرى — سأكتب الاسم</option></select>" +
+      input + (other ? "" : " hidden") + ' placeholder="اكتب الاسم">';
   }
 
   function buildNps() {
@@ -113,6 +127,14 @@
   document.addEventListener("input", function (e) {
     var id = e.target.dataset && e.target.dataset.trackName;
     if (id && state.tracks[id]) state.tracks[id].name = e.target.value;
+  });
+  document.addEventListener("change", function (e) {
+    var id = e.target.dataset && e.target.dataset.trackPick;
+    if (!id || !state.tracks[id]) return;
+    var v = e.target.value, tr = state.tracks[id], inp = $('[data-track-name="' + id + '"]');
+    tr.pick = v;
+    if (v === "__other") { inp.hidden = false; inp.value = ""; tr.name = ""; inp.focus(); }
+    else { inp.hidden = true; tr.name = v; }
   });
 
   function toggleTrack(id, on) {
@@ -204,6 +226,11 @@
   /* ---------- البدء ---------- */
   buildVisit(); buildGroups(); buildTracks(); buildNps(); go(0);
   Store.init().then(function () {
+    Store.activities().then(function (list) {
+      ACTS = {};
+      list.forEach(function (a) { (ACTS[a.track] = ACTS[a.track] || []).push(a.name); });
+      renderTrackQuestions();
+    });
     if (Store.isDemo()) $("#demoBanner").hidden = false;
     var cd = Number(CFG.RATE_COOLDOWN_HOURS || 0), since = Store.hoursSinceLast();
     if (!Store.isDemo() && cd && since < cd) {

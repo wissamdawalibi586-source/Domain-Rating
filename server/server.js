@@ -48,6 +48,14 @@ async function migrate() {
       client_hash TEXT
     );
     CREATE INDEX IF NOT EXISTS ratings_created_at_idx ON ratings (created_at DESC);
+    ALTER TABLE ratings ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'new';
+    CREATE TABLE IF NOT EXISTS activities (
+      id          SERIAL PRIMARY KEY,
+      track       TEXT        NOT NULL,
+      name        TEXT        NOT NULL,
+      active      BOOLEAN     NOT NULL DEFAULT true,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
   `);
 }
 
@@ -151,7 +159,7 @@ app.post("/api/admin/login", limiter(8, 15 * 60 * 1000), (req, res) => {
 app.get("/api/ratings", requireAdmin, async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT id, created_at, visit, scores, tracks, nps, good, improve, contact
+      `SELECT id, created_at, visit, scores, tracks, nps, good, improve, contact, status
        FROM ratings ORDER BY created_at DESC LIMIT 20000`
     );
     res.json({ ok: true, responses: rows.map((r) => ({ ...r, ts: r.created_at.toISOString(), created_at: undefined })) });
@@ -159,6 +167,53 @@ app.get("/api/ratings", requireAdmin, async (req, res) => {
     console.error(e);
     res.status(500).json({ ok: false, error: "تعذّر جلب البيانات" });
   }
+});
+
+/* حالة متابعة الاقتراح: جديد / قيد العمل / تم الحل */
+const STATUSES = ["new", "progress", "done"];
+app.patch("/api/ratings/:id", requireAdmin, async (req, res) => {
+  const status = req.body && req.body.status;
+  if (!STATUSES.includes(status)) return res.status(400).json({ ok: false, error: "حالة غير صالحة" });
+  try {
+    const r = await pool.query("UPDATE ratings SET status = $1 WHERE id = $2", [status, req.params.id]);
+    if (!r.rowCount) return res.status(404).json({ ok: false, error: "التقييم غير موجود" });
+    res.json({ ok: true });
+  } catch (e) { console.error(e); res.status(500).json({ ok: false, error: "تعذّر الحفظ" }); }
+});
+
+app.delete("/api/ratings/:id", requireAdmin, async (req, res) => {
+  try {
+    const r = await pool.query("DELETE FROM ratings WHERE id = $1", [req.params.id]);
+    if (!r.rowCount) return res.status(404).json({ ok: false, error: "التقييم غير موجود" });
+    res.json({ ok: true });
+  } catch (e) { console.error(e); res.status(500).json({ ok: false, error: "تعذّر الحذف" }); }
+});
+
+/* قائمة أسماء التدريبات والفعاليات والمشاريع ومجالات التطوع */
+const TRACK_IDS = ["training", "event", "project", "volunteer"];
+app.get("/api/activities", async (req, res) => {
+  try {
+    const { rows } = await pool.query("SELECT id, track, name FROM activities WHERE active ORDER BY track, name");
+    res.json({ ok: true, activities: rows });
+  } catch (e) { console.error(e); res.status(500).json({ ok: false, error: "تعذّر جلب القائمة" }); }
+});
+
+app.post("/api/activities", requireAdmin, async (req, res) => {
+  const track = req.body && req.body.track, name = text(req.body && req.body.name, 80);
+  if (!TRACK_IDS.includes(track) || !name) return res.status(400).json({ ok: false, error: "اختر المسار واكتب الاسم" });
+  try {
+    const dup = await pool.query("SELECT 1 FROM activities WHERE active AND track = $1 AND lower(name) = lower($2)", [track, name]);
+    if (dup.rowCount) return res.status(409).json({ ok: false, error: "الاسم موجود مسبقاً" });
+    const { rows } = await pool.query("INSERT INTO activities (track, name) VALUES ($1, $2) RETURNING id, track, name", [track, name]);
+    res.json({ ok: true, activity: rows[0] });
+  } catch (e) { console.error(e); res.status(500).json({ ok: false, error: "تعذّر الحفظ" }); }
+});
+
+app.delete("/api/activities/:id", requireAdmin, async (req, res) => {
+  try {
+    await pool.query("UPDATE activities SET active = false WHERE id = $1", [Number(req.params.id) || 0]);
+    res.json({ ok: true });
+  } catch (e) { console.error(e); res.status(500).json({ ok: false, error: "تعذّر الحذف" }); }
 });
 
 app.use("/api", (req, res) => res.status(404).json({ ok: false, error: "not found" }));

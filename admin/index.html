@@ -35,6 +35,7 @@
     <span class="wordmark" aria-label="Domains">D<svg class="o" viewBox="0 0 166 169" fill="none" stroke-width="27" aria-hidden="true"><circle cx="83" cy="19" r="69.5"/><circle cx="83" cy="196" r="69.5"/></svg>mains</span>
     <span class="title">لوحة التقييمات</span>
     <span class="badge" id="modeBadge" hidden>وضع تجريبي</span>
+    <span class="live" id="live" aria-live="off"><i></i><span id="liveText">مباشر</span></span>
     <span class="spacer"></span>
     <button class="btn ghost small" id="refreshBtn" type="button">تحديث</button>
     <button class="btn small" id="csvBtn" type="button">تصدير Excel</button>
@@ -47,7 +48,12 @@
       <button type="button" data-range="30" aria-pressed="true">٣٠ يوماً</button>
       <button type="button" data-range="90">٣ أشهر</button>
       <button type="button" data-range="0">الكل</button>
+      <button type="button" data-range="custom">مخصص</button>
     </div>
+    <span class="custom-range" id="customRange" hidden>
+      <label for="fromDate">من</label><input class="field" type="date" id="fromDate">
+      <label for="toDate">إلى</label><input class="field" type="date" id="toDate">
+    </span>
     <select class="field" id="visitFilter" aria-label="سبب الزيارة"><option value="">كل الزيارات</option></select>
     <span class="spacer" style="flex:1"></span>
     <span id="demoTools" style="display:none;gap:8px">
@@ -60,6 +66,9 @@
 </div>
 
 <div class="tip" id="tip" role="tooltip"></div>
+<div class="drawer-back" id="drawerBack" hidden></div>
+<aside class="drawer" id="drawer" hidden role="dialog" aria-modal="true" aria-labelledby="drawerTitle"></aside>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="../assets/js/config.js"></script>
 <script src="../assets/js/categories.js"></script>
