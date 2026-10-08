@@ -204,21 +204,21 @@
       var items = ITEMS.map(function (it) { return itemStats(rows, it); });
       var pitems = ITEMS.map(function (it) { return itemStats(prev, it); });
       html = alerts() +
-        '<section class="sec"><div class="overview">' + gauge(s, p) + summary(items, pitems, rows, s) + "</div></section>" +
-        '<section class="sec">' + kpis(s, p, bk) + "</section>" +
-        '<section class="sec">' + groupsRow(rows) + "</section>" +
-        '<section class="sec"><div class="sec-head"><div><h2>التقييمات عبر الزمن</h2><p>' + (bk.length && bk[0].step > 1 ? "عدد التقييمات أسبوعياً" : "عدد التقييمات يومياً") + "</p></div></div>" + timeline(bk) + "</section>";
+        '<div class="overview"><section class="sec">' + gauge(s, p) + '</section><section class="sec">' + head("الخلاصة", "تُكتب تلقائياً من تقييمات الفترة المختارة") + summary(items, pitems, rows, s) + "</section></div>" +
+        kpis(s, p, bk) +
+        groupsRow(rows) +
+        '<section class="sec">' + head("التقييمات عبر الزمن", bk.length && bk[0].step > 1 ? "عدد التقييمات أسبوعياً" : "عدد التقييمات يومياً") + timeline(bk) + "</section>";
     } else if (tab === "cats") {
       var its = ITEMS.map(function (it) { return itemStats(rows, it); });
-      html = '<section class="sec"><div class="cols">' +
-        "<div>" + head("متوسط كل تصنيف", "اضغط على أي تصنيف لعرض تفاصيله") + avgBars(its) + "</div>" +
-        "<div>" + head("حسب سبب الزيارة", "متوسط كل تصنيف لكل فئة من الزوار") + heatmap(rows) + "</div></div></section>";
+      html = '<div class="cols">' +
+        '<section class="sec">' + head("متوسط كل تصنيف", "اضغط على أي تصنيف لعرض تفاصيله") + avgBars(its) + "</section>" +
+        '<section class="sec">' + head("حسب سبب الزيارة", "متوسط كل تصنيف لكل فئة من الزوار") + heatmap(rows) + "</section></div>";
     } else if (tab === "tracks") {
-      html = '<section class="sec"><div class="cols">' +
-        "<div>" + head("ترتيب التدريبات والفعاليات", "حسب متوسط التقييم في الفترة المختارة") + ranking(rows) + "</div>" +
-        "<div>" + head("أسماء التدريبات والفعاليات", "تظهر للطلاب كقائمة اختيار في خطوة المسارات") + '<div id="actsBox">' + actsPanel() + "</div></div></div></section>";
+      html = '<div class="cols">' +
+        '<section class="sec">' + head("ترتيب التدريبات والفعاليات", "حسب متوسط التقييم في الفترة المختارة") + ranking(rows) + "</section>" +
+        '<section class="sec">' + head("أسماء التدريبات والفعاليات", "تظهر للطلاب كقائمة اختيار في خطوة المسارات") + '<div id="actsBox">' + actsPanel() + "</div></section></div>";
     } else if (tab === "voice") {
-      html = '<section class="sec" id="commentsBox">' + commentsSection(rows) + "</section>";
+      html = '<div id="commentsBox">' + commentsSection(rows) + "</div>";
     } else if (tab === "reports") {
       html = '<section class="sec">' + head("مقارنة شهر بشهر", "الفرق في كل تصنيف بين شهرين") + '<div id="cmpBox">' + monthCompare() + "</div></section>" +
         '<section class="sec">' + head("آخر التقييمات", "أحدث 50 تقييماً في الفترة المختارة، مع إمكانية الحذف") + table(rows) + "</section>";
@@ -277,7 +277,8 @@
     var d = range && h != null && ph != null ? h - ph : null;
     return '<div class="gauge-box"><svg class="gauge" viewBox="0 0 220 128" aria-hidden="true">' +
       '<path class="g-track" d="M20 115 A90 90 0 0 1 200 115" fill="none" stroke-width="14" stroke-linecap="round" pathLength="100"/>' +
-      (h != null ? '<path class="g-val" d="M20 115 A90 90 0 0 1 200 115" fill="none" stroke-width="14" stroke-linecap="round" pathLength="100" stroke-dasharray="' + Math.max(1, h) + ' 100"/>' : "") +
+      '<defs><linearGradient id="gg" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#7053DA"/><stop offset="1" stop-color="#1D3A89"/></linearGradient></defs>' +
+      (h != null ? '<path d="M20 115 A90 90 0 0 1 200 115" fill="none" stroke="url(#gg)" stroke-width="14" stroke-linecap="round" pathLength="100" stroke-dasharray="' + Math.max(1, h) + ' 100"/>' : "") +
       '<text x="110" y="102" text-anchor="middle" font-size="46" font-weight="700">' + (h == null ? "–" : h) + "</text>" +
       '<text x="110" y="124" text-anchor="middle" font-size="12" style="fill:var(--muted)">صحة المكان من 100</text></svg>' +
       '<div class="g-label c-' + cls + '">' + label + "</div>" +
@@ -305,7 +306,7 @@
     var fresh = rows.filter(function (r) { return hasText(r) && statusOf(r) === "new"; }).length;
     if (fresh) lines.push({ c: "mid", i: "✎", t: plural(fresh, "ملاحظة جديدة", "ملاحظات جديدة") + " تنتظر المتابعة في <b>صوت الطلاب</b>." });
     return '<ul class="summary-list">' + lines.map(function (l) {
-      return '<li><span class="s-ico c-' + l.c + '" aria-hidden="true">' + l.i + "</span><span>" + l.t + "</span></li>";
+      return '<li><span class="tile ' + ({ good: "green", bad: "pink", mid: "peach" }[l.c] || "blue") + '" aria-hidden="true">' + l.i + "</span><span>" + l.t + "</span></li>";
     }).join("") + "</ul>";
   }
 
@@ -328,6 +329,7 @@
   function kpis(s, p, bk) {
     var st = bk.map(function (b) { return stats(b.rows); });
     var npsLbl = s.nps == null ? "" : s.nps >= 50 ? "ممتاز" : s.nps >= 0 ? "جيد" : "يحتاج عمل";
+    kpiIdx = 0;
     return '<div class="stats">' +
       kpi("عدد التقييمات", num(s.n), "", range ? delta(s.n, p.n, "", 0) : '<div class="k-sub">منذ البداية</div>', spark(bk.map(function (b) { return b.rows.length; }))) +
       kpi("متوسط الرضا", num(s.avg, 1), "<small> / 5</small>", delta(s.avg, p.avg, ""), spark(st.map(function (x) { return x.avg; }))) +
@@ -335,8 +337,16 @@
       kpi("مؤشر التوصية NPS", num(s.nps, 0, true), "", '<div class="k-sub">' + npsLbl + "، " + plural(s.pro, "مروّج", "مروّجين") + " و" + plural(s.det, "منتقد", "منتقدين") + "</div>", spark(st.map(function (x) { return x.nps; }))) +
       "</div>";
   }
+  var KPI_TILES = [
+    ["violet", '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>'],
+    ["blue", '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>'],
+    ["green", '<circle cx="12" cy="12" r="9"/><path d="M8.5 14a4.5 4.5 0 007 0M9 9.5h.01M15 9.5h.01"/>'],
+    ["peach", '<path d="M3 10v4a1 1 0 001 1h3l6 4V5L7 9H4a1 1 0 00-1 1z"/><path d="M17 8.5a5 5 0 010 7"/>']
+  ];
+  var kpiIdx = 0;
   function kpi(label, val, suffix, sub, sp) {
-    return '<div class="stat"><div class="k-label">' + label + '</div><div class="k-value">' + val + suffix + "</div>" + (sub || "") + (sp || "") + "</div>";
+    var t = KPI_TILES[kpiIdx++ % 4];
+    return '<div class="stat sec"><div class="k-label">' + label + '</div><span class="tile ' + t[0] + '"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + t[1] + '</svg></span><div class="k-value">' + val + suffix + "</div>" + (sub || "") + (sp || "") + "</div>";
   }
 
   /* B5 — المجموعات */
@@ -352,7 +362,7 @@
     return '<div class="groups">' + cards.join("") + "</div>";
   }
   function groupCard(title, avg, list) {
-    return '<div class="group"><div class="gh"><h3>' + title + '</h3><span class="gv c-' + sClass(avg) + '">' + fmt(avg) + "</span></div>" +
+    return '<div class="group sec"><div class="gh"><h3>' + title + '</h3><span class="gv c-' + sClass(avg) + '">' + fmt(avg) + "</span></div>" +
       '<div class="g-items">' + list.map(function (x) {
         var tag = x.id ? "button" : "div";
         return "<" + tag + (x.id ? ' type="button" data-cat="' + x.id + '"' : "") + ' class="g-item"><span class="n">' + esc(x.name) + '</span><span class="mini"><i class="grow" style="width:' + (x.avg ? x.avg / 5 * 100 : 0) + '%"></i></span><span class="v c-' + sClass(x.avg) + '">' + fmt(x.avg) + "</span></" + tag + ">";
@@ -388,19 +398,24 @@
 
   function timeline(bk) {
     if (!bk.length) return '<p class="muted">لا توجد بيانات.</p>';
-    var W = Math.max(340, Math.min(1160, ($("#dash") || document.body).clientWidth - 40)), H = 170, padL = 28, padB = 22, padT = 10, nb = bk.length;
-    var max = Math.max.apply(null, bk.map(function (b) { return b.rows.length; }).concat([1]));
-    var step = (W - padL) / nb, bw = Math.max(2, Math.min(22, step - 3));
+    var W = Math.max(340, Math.min(1160, ($("#dash") || document.body).clientWidth - 90)), H = 190, padL = 30, padR = 10, padB = 24, padT = 12, nb = bk.length;
+    var counts = bk.map(function (b) { return b.rows.length; });
+    var max = Math.max.apply(null, counts.concat([1]));
     var ticks = [0, Math.ceil(max / 2), max].filter(function (v, i, a) { return a.indexOf(v) === i; });
-    var y = function (v) { return H - padB - v / max * (H - padB - padT); };
-    var svg = '<svg class="timeline" viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none" direction="ltr">';
-    ticks.forEach(function (t) { svg += '<line class="axis" x1="' + padL + '" x2="' + W + '" y1="' + y(t) + '" y2="' + y(t) + '"/><text x="' + (padL - 6) + '" y="' + (y(t) + 4) + '" text-anchor="end">' + t + "</text>"; });
+    var X = function (i) { return nb === 1 ? (padL + W - padR) / 2 : padL + i / (nb - 1) * (W - padL - padR); };
+    var Y = function (v) { return H - padB - v / max * (H - padB - padT); };
+    var svg = '<svg class="timeline" viewBox="0 0 ' + W + " " + H + '" direction="ltr">';
+    ticks.forEach(function (t) { svg += '<line class="axis" x1="' + padL + '" x2="' + (W - padR) + '" y1="' + Y(t) + '" y2="' + Y(t) + '"/><text x="' + (padL - 8) + '" y="' + (Y(t) + 4) + '" text-anchor="end">' + t + "</text>"; });
+    var pts = counts.map(function (c, i) { return X(i).toFixed(1) + " " + Y(c).toFixed(1); });
+    svg += '<path class="tl-area" d="M' + pts.join(" L") + " L" + X(nb - 1).toFixed(1) + " " + Y(0) + " L" + X(0).toFixed(1) + " " + Y(0) + 'Z"/>';
+    svg += '<path class="tl-line" d="M' + pts.join(" L") + '"/>';
+    var colW = (W - padL - padR) / Math.max(1, nb - 1);
     bk.forEach(function (b, i) {
-      var c = b.rows.length, x = padL + i * step + (step - bw) / 2;
+      var c = b.rows.length;
       var tip = "<b>" + (b.step > 1 ? "أسبوع " : "") + dateLabel(b.start) + "</b><br>" + plural(c, "تقييم", "تقييمات") + (c ? "، المتوسط " + fmt(stats(b.rows).avg) : "");
-      svg += '<rect class="hit" x="' + (padL + i * step) + '" y="' + padT + '" width="' + step + '" height="' + (H - padB - padT) + '" fill="transparent" data-tip="' + esc(tip) + '"/>';
-      if (c) svg += '<rect class="bar" x="' + x + '" y="' + y(c) + '" width="' + bw + '" height="' + (H - padB - y(c)) + '" rx="' + Math.min(4, bw / 2) + '" pointer-events="none"/>';
-      if (i === 0 || i === nb - 1 || i === Math.floor(nb / 2)) svg += '<text x="' + (x + bw / 2) + '" y="' + (H - 5) + '" text-anchor="' + (i === 0 ? "start" : i === nb - 1 ? "end" : "middle") + '">' + dateLabel(b.start) + "</text>";
+      svg += '<rect x="' + (X(i) - colW / 2).toFixed(1) + '" y="' + padT + '" width="' + colW.toFixed(1) + '" height="' + (H - padB - padT) + '" fill="transparent" data-tip="' + esc(tip) + '"/>';
+      if (nb <= 45) svg += '<circle class="tl-dot" r="3.5" cx="' + X(i).toFixed(1) + '" cy="' + Y(c).toFixed(1) + '" pointer-events="none"/>';
+      if (i === 0 || i === nb - 1 || i === Math.floor(nb / 2)) svg += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="' + (i === 0 ? "start" : i === nb - 1 ? "end" : "middle") + '">' + dateLabel(b.start) + "</text>";
     });
     return svg + "</svg>";
   }
@@ -421,7 +436,7 @@
     var T = {}; TRACKS.forEach(function (t) { T[t.id] = t; });
     return '<div class="rank">' + list.map(function (m) {
       var t = T[m.track] || { icon: "event", title: m.track };
-      return '<div class="rank-row"><span class="q-icon">' + icon(t.icon) + '</span><span class="nm">' + esc(m.name) + "<small>" + t.title + '</small></span><span class="cnt">' + plural(m.v.length, "تقييم", "تقييمات") + '</span><span class="sc c-' + sClass(m.avg) + '">' + fmt(m.avg) + "</span></div>";
+      return '<div class="rank-row"><span class="q-icon">' + icon(t.icon) + '</span><span class="nm">' + esc(m.name) + "<small>" + t.title + '</small></span><span class="cnt">' + plural(m.v.length, "تقييم", "تقييمات") + '</span><span class="sc">' + pill(m.avg) + "</span></div>";
     }).join("") + "</div>";
   }
 
@@ -453,13 +468,13 @@
     });
     function chip(key, val, label, n) { return '<button type="button" class="fchip" data-cf="' + key + ":" + val + '" aria-pressed="' + (String(cf[key]) === String(val)) + '">' + label + (n != null ? " <b>" + n + "</b>" : "") + "</button>"; }
     var topics = topicCounts(rows);
-    return '<div class="voice"><aside class="voice-side">' +
+    return '<div class="voice"><aside class="voice-side sec">' +
       '<input class="field" id="cSearch" placeholder="بحث في الملاحظات" value="' + esc(cf.search) + '" aria-label="بحث في الملاحظات">' +
       '<div><h4>الحالة</h4><div class="fgroup">' + chip("status", "all", "الكل") + STATUS.map(function (s) { return chip("status", s.id, s.t, counts[s.id]); }).join("") +
         '<button type="button" class="fchip" data-cf="reply:toggle" aria-pressed="' + cf.reply + '">ينتظرون رداً <b>' + counts.reply + "</b></button></div></div>" +
       '<div><h4>الدرجة</h4><div class="fgroup">' + chip("score", "all", "الكل") + chip("score", "low", "منخفضة", counts.low) + chip("score", "mid", "متوسطة", counts.mid) + chip("score", "high", "مرتفعة", counts.high) + "</div></div>" +
       (topics.length ? '<div><h4>الموضوع</h4><div class="fgroup">' + chip("topic", "", "الكل") + topics.map(function (t) { return chip("topic", t.id, t.name, t.n); }).join("") + "</div></div>" : "") +
-      '</aside><div style="min-width:0">' + head("صوت الطلاب", plural(withText.length, "ملاحظة مكتوبة", "ملاحظات مكتوبة") + "، منها " + counts.new + " جديدة") + commentsList(rows) + "</div></div>";
+      '</aside><div class="sec">' + head("صوت الطلاب", plural(withText.length, "ملاحظة مكتوبة", "ملاحظات مكتوبة") + "، منها " + counts.new + " جديدة") + commentsList(rows) + "</div></div>";
   }
   function commentsList(rows) {
     var q = norm(cf.search.trim());
@@ -547,23 +562,23 @@
       return (v && v <= 2) || topicsOf(r).some(function (t) { return topics.indexOf(t) >= 0; });
     });
     var d = range && x.avg != null && px.avg != null ? x.avg - px.avg : null;
-    var html = '<div class="d-head"><span class="q-icon">' + icon(it.icon) + '</span><div><h2 id="drawerTitle">' + esc(it.base) + "</h2><p>" + (g ? g.title : "") + '</p></div><button class="d-close" type="button" id="drawerClose" aria-label="إغلاق">✕</button></div>' +
-      '<div class="d-stats"><div class="stat"><div class="k-label">المتوسط</div><div class="k-value c-' + sClass(x.avg) + '">' + fmt(x.avg) + "</div>" +
+    var html = '<div class="d-head"><span class="q-icon">' + icon(it.icon) + '</span><div><h2 id="drawerTitle">' + esc(it.base) + "</h2><p>" + (g ? g.title : "") + '</p></div><button class="d-close" type="button" id="drawerClose" aria-label="إغلاق">✕</button></div><div class="d-body">' +
+      '<div class="d-stats"><div class="stat sec"><div class="k-label">المتوسط</div><div class="k-value c-' + sClass(x.avg) + '">' + fmt(x.avg) + "</div>" +
       (d != null ? '<div class="k-sub c-' + (d >= 0 ? "good" : "bad") + '">' + (Math.abs(d) < 0.05 ? "بدون تغيير" : (d > 0 ? "▲ " : "▼ ") + fmt(Math.abs(d))) + "</div>" : '<div class="k-sub">' + sWord(x.avg) + "</div>") + "</div>" +
-      '<div class="stat"><div class="k-label">المقيّمون</div><div class="k-value">' + x.n + "</div></div>" +
-      '<div class="stat"><div class="k-label">' + (it.optional ? "لم يجرّب" : "لم يقيّم") + '</div><div class="k-value">' + (rows.length ? Math.round(x.skipped / rows.length * 100) : 0) + "<small>%</small></div></div></div>" +
-      "<section><h3>توزيع الدرجات</h3><div class=\"d-dist\">" +
+      '<div class="stat sec"><div class="k-label">المقيّمون</div><div class="k-value">' + x.n + "</div></div>" +
+      '<div class="stat sec"><div class="k-label">' + (it.optional ? "لم يجرّب" : "لم يقيّم") + '</div><div class="k-value">' + (rows.length ? Math.round(x.skipped / rows.length * 100) : 0) + "<small>%</small></div></div></div>" +
+      '<section class="sec"><h3>توزيع الدرجات</h3><div class="d-dist">' +
       SCALE.slice().reverse().map(function (s) {
         var c = x.dist[s.v - 1], pct = x.n ? c / x.n * 100 : 0;
         return '<div class="row"><span>' + s.v + " " + s.label + '</span><span class="bar"><i style="width:' + pct + '%"></i></span><span class="ct">' + c + "، " + fmt(pct, 0) + "%</span></div>";
       }).join("") + "</div></section>" +
-      "<section><h3>المتوسط عبر الزمن</h3>" + trend(bk) + "</section>" +
-      "<section><h3>ملاحظات متعلقة</h3><p class=\"sub\" style=\"margin:-8px 0 12px\">ممن قيّموه بـ 2 أو أقل، أو كتبوا عن موضوعه</p>" +
+      '<section class="sec"><h3>المتوسط عبر الزمن</h3>' + trend(bk) + "</section>" +
+      '<section class="sec"><h3>ملاحظات متعلقة</h3><p class="sub" style="margin:-8px 0 12px">ممن قيّموه بـ 2 أو أقل، أو كتبوا عن موضوعه</p>' +
       (related.length ? '<div class="comments">' + related.slice(0, 30).map(function (r) {
         var v = (r.scores || {})[id];
         return '<div class="comment"><div class="meta"><span>' + dateLabel(ts(r), { day: "numeric", month: "short", year: "numeric" }) + "</span><span>" + (v ? pill(v) : "") + "</span></div>" +
           (r.good ? '<p class="g">' + esc(r.good) + "</p>" : "") + (r.improve ? '<p class="b">' + esc(r.improve) + "</p>" : "") + "</div>";
-      }).join("") + "</div>" : '<p class="muted">لا توجد ملاحظات متعلقة في هذه الفترة.</p>') + "</section>";
+      }).join("") + "</div>" : '<p class="muted">لا توجد ملاحظات متعلقة في هذه الفترة.</p>') + "</section></div>";
     $("#drawer").innerHTML = html;
     $("#drawer").hidden = false; $("#drawerBack").hidden = false;
     document.body.style.overflow = "hidden";
@@ -594,11 +609,13 @@
   /* التبويبات */
   function setTab(t) {
     tab = t; try { localStorage.setItem("domains_admin_tab", t); } catch (e) {}
+    setTitle();
     $$("#tabs button").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === t)); });
     render(true); window.scrollTo({ top: 0 });
   }
+  function setTitle() { var b = $('#tabs [data-tab="' + tab + '"]'); if (b) $("#pageTitle").textContent = b.textContent.replace(/\d+$/, "").trim(); }
   $$("#tabs button").forEach(function (b) { b.addEventListener("click", function () { setTab(b.dataset.tab); }); });
-  (function () { var t = null; try { t = localStorage.getItem("domains_admin_tab"); } catch (e) {} if (t && $('#tabs [data-tab="' + t + '"]')) { tab = t; $$("#tabs button").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === t)); }); } })();
+  (function () { var t = null; try { t = localStorage.getItem("domains_admin_tab"); } catch (e) {} if (t && $('#tabs [data-tab="' + t + '"]')) { tab = t; $$("#tabs button").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === t)); }); } setTitle(); })();
 
   /* ---------- التفاعل (تفويض الأحداث) ---------- */
   document.addEventListener("click", function (e) {

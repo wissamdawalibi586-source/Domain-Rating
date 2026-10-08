@@ -194,7 +194,7 @@
     if (miss.length) {
       miss.forEach(function (m) { if (m) m.classList.add("missing"); });
       if (miss[0]) miss[0].scrollIntoView({ behavior: "smooth", block: "center" });
-      toast(state.step === 5 ? "اختر رقماً من 0 إلى 10" : miss.length === 1 ? "بقي سؤال واحد بدون تقييم" : "بقيت " + miss.length + " أسئلة بدون تقييم");
+      toast(state.step === 5 ? "اختر رقماً من 0 إلى 10" : miss.length === 1 ? "بقي سؤال واحد بدون تقييم" : miss.length === 2 ? "بقي سؤالان بدون تقييم" : "بقيت " + miss.length + " أسئلة بدون تقييم");
       return;
     }
     if (state.step === LAST_STEP) return submit();
