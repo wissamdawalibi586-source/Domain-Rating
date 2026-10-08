@@ -231,7 +231,14 @@ app.use((req, res, next) => {
   if ((p === "/admin" && !req.path.endsWith("/")) || p === "/domains-rating-admin") return res.redirect(301, "/admin/");
   next();
 });
-app.use(express.static(ROOT, { extensions: ["html"], maxAge: "1h" }));
+// no-cache: المتصفح يحتفظ بالملفات لكنه يتحقق من وجود نسخة أحدث في كل زيارة (ETag)،
+// فتصل التعديلات للجميع فور النشر. الصور والخطوط تبقى مخزّنة يوماً.
+app.use(express.static(ROOT, {
+  extensions: ["html"],
+  setHeaders: (res, file) => {
+    res.set("Cache-Control", /\.(svg|jpe?g|png|webp|woff2?)$/i.test(file) ? "public, max-age=86400" : "no-cache");
+  }
+}));
 app.use((req, res) => res.status(404).sendFile(path.join(ROOT, "index.html")));
 
 migrate()
