@@ -2,10 +2,10 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
   <title>لوحة التقييمات — Domains</title>
-  <meta name="theme-color" content="#0616C4">
+  <meta name="theme-color" content="#030B6E">
   <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,10 +16,10 @@
 
 <!-- تسجيل الدخول -->
 <div class="login" id="loginView">
-  <div class="card">
-    <svg class="mark" viewBox="0 0 166 169" fill="none" stroke-width="27" style="width:54px;height:56px;margin-bottom:18px" aria-hidden="true"><circle cx="83" cy="19" r="69.5"/><circle cx="83" cy="196" r="69.5"/></svg>
-    <div><span class="wordmark" aria-label="Domains">D<svg class="o" viewBox="0 0 166 169" fill="none" stroke-width="27" aria-hidden="true"><circle cx="83" cy="19" r="69.5"/><circle cx="83" cy="196" r="69.5"/></svg>mains</span></div>
-    <p class="muted" style="margin:6px 0 0">لوحة إدارة التقييمات</p>
+  <div class="box">
+    <svg class="mark" viewBox="0 0 166 169" fill="none" stroke-width="27" aria-hidden="true"><circle cx="83" cy="19" r="69.5"/><circle cx="83" cy="196" r="69.5"/></svg>
+    <h1>لوحة التقييمات</h1>
+    <p class="muted" style="margin:0">ادخل كلمة السر لعرض تقييمات الطلاب.</p>
     <form id="loginForm">
       <label class="label" for="pw" style="margin:0">كلمة السر</label>
       <input class="field" id="pw" type="password" autocomplete="current-password" required>
@@ -30,39 +30,52 @@
 </div>
 
 <!-- اللوحة -->
-<div class="admin" id="adminView" hidden>
-  <header class="admin-top">
-    <span class="wordmark" aria-label="Domains">D<svg class="o" viewBox="0 0 166 169" fill="none" stroke-width="27" aria-hidden="true"><circle cx="83" cy="19" r="69.5"/><circle cx="83" cy="196" r="69.5"/></svg>mains</span>
-    <span class="title">لوحة التقييمات</span>
-    <span class="badge" id="modeBadge" hidden>وضع تجريبي</span>
-    <span class="live" id="live" aria-live="off"><i></i><span id="liveText">مباشر</span></span>
-    <span class="spacer"></span>
-    <button class="btn ghost small" id="refreshBtn" type="button">تحديث</button>
-    <button class="btn small" id="csvBtn" type="button">تصدير Excel</button>
-    <button class="btn ghost small" id="logoutBtn" type="button">خروج</button>
+<div id="adminView" hidden>
+  <header class="a-head">
+    <div class="row">
+      <span class="wordmark" aria-label="Domains">D<svg class="o" viewBox="0 0 166 169" fill="none" stroke-width="27" aria-hidden="true"><circle cx="83" cy="19" r="69.5"/><circle cx="83" cy="196" r="69.5"/></svg>mains</span>
+      <span class="title">لوحة التقييمات</span>
+      <span class="badge" id="modeBadge" hidden>وضع تجريبي</span>
+      <span class="live" id="live"><i></i><span id="liveText">مباشر</span></span>
+      <span class="spacer"></span>
+      <span class="actions">
+        <span id="demoTools" style="display:none;gap:8px">
+          <button class="btn ghost small" id="seedBtn" type="button">بيانات تجريبية</button>
+          <button class="btn ghost small" id="clearBtn" type="button">مسح</button>
+        </span>
+        <button class="btn ghost small" id="refreshBtn" type="button">تحديث</button>
+        <button class="btn small" id="csvBtn" type="button">تصدير Excel</button>
+        <button class="btn ghost small" id="logoutBtn" type="button">خروج</button>
+      </span>
+    </div>
+    <div class="a-nav">
+      <div class="row">
+        <nav class="tabs" id="tabs" role="tablist" aria-label="أقسام اللوحة">
+          <button type="button" role="tab" data-tab="overview" aria-selected="true">نظرة عامة</button>
+          <button type="button" role="tab" data-tab="cats" aria-selected="false">التصنيفات</button>
+          <button type="button" role="tab" data-tab="tracks" aria-selected="false">المسارات</button>
+          <button type="button" role="tab" data-tab="voice" aria-selected="false">صوت الطلاب<b id="newCount" hidden></b></button>
+          <button type="button" role="tab" data-tab="reports" aria-selected="false">تقارير</button>
+        </nav>
+        <div class="filters">
+          <div class="seg" id="rangeSeg" role="group" aria-label="الفترة">
+            <button type="button" data-range="7">٧ أيام</button>
+            <button type="button" data-range="30" aria-pressed="true">٣٠ يوماً</button>
+            <button type="button" data-range="90">٣ أشهر</button>
+            <button type="button" data-range="0">الكل</button>
+            <button type="button" data-range="custom">مخصص</button>
+          </div>
+          <span class="custom-range" id="customRange" hidden>
+            <label for="fromDate">من</label><input class="field" type="date" id="fromDate">
+            <label for="toDate">إلى</label><input class="field" type="date" id="toDate">
+          </span>
+          <select class="field" id="visitFilter" aria-label="سبب الزيارة"><option value="">كل الزيارات</option></select>
+        </div>
+      </div>
+    </div>
   </header>
 
-  <div class="filters">
-    <div class="seg" id="rangeSeg" role="group" aria-label="الفترة">
-      <button type="button" data-range="7">٧ أيام</button>
-      <button type="button" data-range="30" aria-pressed="true">٣٠ يوماً</button>
-      <button type="button" data-range="90">٣ أشهر</button>
-      <button type="button" data-range="0">الكل</button>
-      <button type="button" data-range="custom">مخصص</button>
-    </div>
-    <span class="custom-range" id="customRange" hidden>
-      <label for="fromDate">من</label><input class="field" type="date" id="fromDate">
-      <label for="toDate">إلى</label><input class="field" type="date" id="toDate">
-    </span>
-    <select class="field" id="visitFilter" aria-label="سبب الزيارة"><option value="">كل الزيارات</option></select>
-    <span class="spacer" style="flex:1"></span>
-    <span id="demoTools" style="display:none;gap:8px">
-      <button class="btn ghost small" id="seedBtn" type="button">توليد بيانات تجريبية</button>
-      <button class="btn ghost small" id="clearBtn" type="button">مسح</button>
-    </span>
-  </div>
-
-  <div id="dash"></div>
+  <main class="admin" id="dash"></main>
 </div>
 
 <div class="tip" id="tip" role="tooltip"></div>

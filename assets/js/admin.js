@@ -9,8 +9,8 @@
   var DAY = 864e5, REFRESH_MS = 60000;
 
   /* ---------- الحالة ---------- */
-  var all = [], acts = [], range = 30, from = null, to = null, visit = "";
-  var cf = { score: "all", topic: "", status: "all", reply: false, search: "" };
+  var all = [], acts = [], range = 30, from = null, to = null, visit = "", tab = "overview";
+  var cf = { score: "all", topic: "", status: "all", reply: false, search: "", limit: 20 };
   var month = { a: "", b: "" };
   var lastSync = 0, signature = "", online = true, timer = null;
 
@@ -20,7 +20,6 @@
   function fmt(x, d) { return x == null || isNaN(x) ? "–" : x.toFixed(d == null ? 1 : d); }
   function sClass(v) { return v == null ? "" : v >= 4 ? "good" : v >= 3 ? "mid" : "bad"; }
   function sWord(v) { return v == null ? "" : v >= 4 ? "جيد" : v >= 3 ? "متوسط" : "ضعيف"; }
-  function pill(v) { return v == null ? '<span class="muted">–</span>' : '<span class="score-pill c-' + sClass(v) + '">' + fmt(v) + "</span>"; }
   function plural(n, one, many) { return n + " " + (n === 1 ? one : n >= 3 && n <= 10 ? many : one); }
   function norm(s) {
     return String(s || "").toLowerCase().replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي");
@@ -181,45 +180,59 @@
   function liveText() {
     var el = $("#live"); if (!el) return;
     el.classList.toggle("off", !online);
-    if (!online) { $("#liveText").textContent = "غير متصل — سنحاول مجدداً"; return; }
+    if (!online) { $("#liveText").textContent = "غير متصل، سنحاول مجدداً"; return; }
     var s = Math.round((Date.now() - lastSync) / 1000);
-    $("#liveText").textContent = "مباشر · آخر تحديث " + (s < 10 ? "الآن" : s < 60 ? "قبل " + s + " ث" : "قبل " + Math.round(s / 60) + " د");
+    $("#liveText").textContent = "مباشر، آخر تحديث " + (s < 10 ? "الآن" : s < 60 ? "قبل " + s + " ث" : "قبل " + Math.round(s / 60) + " د");
   }
 
   /* ---------- الرسم ---------- */
   function render(animate) {
-    if (!all.length) {
-      $("#dash").innerHTML = '<div class="card empty-state"><svg class="mark" viewBox="0 0 166 169" fill="none" stroke-width="27"><circle cx="83" cy="19" r="69.5"/><circle cx="83" cy="196" r="69.5"/></svg>' +
-        "<h3>لا توجد تقييمات بعد</h3><p class=\"muted\">شارك رابط صفحة التقييم مع الطلاب" + (Store.isDemo() ? "، أو اضغط «توليد بيانات تجريبية» لمعاينة اللوحة." : ".") + "</p></div>" +
-        '<div class="card panel" style="margin-top:14px"><h3>أسماء التدريبات والفعاليات</h3><p class="sub">تظهر للطلاب كقائمة اختيار في خطوة المسارات</p><div id="actsBox">' + actsPanel() + "</div></div>";
+    var nc = all.filter(function (r) { return hasText(r) && statusOf(r) === "new"; }).length;
+    $("#newCount").hidden = !nc; $("#newCount").textContent = nc;
+    if (!all.length && tab !== "tracks") {
+      $("#dash").innerHTML = '<div class="empty-state"><svg class="mark" viewBox="0 0 166 169" fill="none" stroke-width="27"><circle cx="83" cy="19" r="69.5"/><circle cx="83" cy="196" r="69.5"/></svg>' +
+        "<h3>لا توجد تقييمات بعد</h3><p class=\"muted\">شارك رابط صفحة التقييم مع الطلاب" + (Store.isDemo() ? "، أو اضغط «بيانات تجريبية» لمعاينة اللوحة." : ".") + "</p></div>";
       return;
     }
-    if (range === "custom" && !win()) { $("#dash").innerHTML = '<div class="card empty-state"><p class="muted">اختر تاريخ البداية والنهاية.</p></div>'; return; }
+    if (range === "custom" && !win()) { $("#dash").innerHTML = '<div class="empty-state"><p class="muted">اختر تاريخ البداية والنهاية.</p></div>'; return; }
     var w = win(), pw = win(1);
     var rows = all.filter(within(w)), prev = pw ? all.filter(within(pw)) : [];
-    var s = stats(rows), p = stats(prev);
-    var items = ITEMS.map(function (it) { return itemStats(rows, it); });
-    var pitems = ITEMS.map(function (it) { return itemStats(prev, it); });
-    var bk = buckets(rows, w);
+    var html = "";
 
-    $("#dash").innerHTML =
-      alerts() +
-      '<div class="hero-row">' + gauge(s, p, rows) + summary(items, pitems, rows, s) + "</div>" +
-      kpis(s, p, bk) +
-      groupsRow(rows) +
-      '<div class="grid-2">' + panel("متوسط كل تصنيف", "اضغط على أي تصنيف لتفاصيله", avgBars(items)) + panel("توزيع التقييمات", "نسبة كل درجة في كل تصنيف", distChart(items)) + "</div>" +
-      '<div class="grid-2">' + panel("حسب سبب الزيارة", "متوسط كل تصنيف لكل فئة من الزوار", heatmap(rows)) + panel("التقييمات عبر الزمن", bk.length && bk[0].step > 1 ? "عدد التقييمات أسبوعياً" : "عدد التقييمات يومياً", timeline(bk)) + "</div>" +
-      '<div class="grid-2">' + panel("ترتيب التدريبات والفعاليات", "حسب متوسط التقييم في الفترة المختارة", ranking(rows)) +
-        panel("أسماء التدريبات والفعاليات", "تظهر للطلاب كقائمة اختيار في خطوة المسارات", '<div id="actsBox">' + actsPanel() + "</div>") + "</div>" +
-      '<div class="card panel" style="margin-bottom:14px" id="commentsBox">' + commentsSection(rows) + "</div>" +
-      '<div class="grid-2">' + panel("مقارنة شهر بشهر", "الفرق في كل تصنيف بين شهرين", '<div id="cmpBox">' + monthCompare() + "</div>") +
-        panel("آخر التقييمات", "أحدث 50 في الفترة المختارة", '<div id="tableBox">' + table(rows) + "</div>") + "</div>";
-
+    if (tab === "overview") {
+      var s = stats(rows), p = stats(prev), bk = buckets(rows, w);
+      var items = ITEMS.map(function (it) { return itemStats(rows, it); });
+      var pitems = ITEMS.map(function (it) { return itemStats(prev, it); });
+      html = alerts() +
+        '<section class="sec"><div class="overview">' + gauge(s, p) + summary(items, pitems, rows, s) + "</div></section>" +
+        '<section class="sec">' + kpis(s, p, bk) + "</section>" +
+        '<section class="sec">' + groupsRow(rows) + "</section>" +
+        '<section class="sec"><div class="sec-head"><div><h2>التقييمات عبر الزمن</h2><p>' + (bk.length && bk[0].step > 1 ? "عدد التقييمات أسبوعياً" : "عدد التقييمات يومياً") + "</p></div></div>" + timeline(bk) + "</section>";
+    } else if (tab === "cats") {
+      var its = ITEMS.map(function (it) { return itemStats(rows, it); });
+      html = '<section class="sec"><div class="cols">' +
+        "<div>" + head("متوسط كل تصنيف", "اضغط على أي تصنيف لعرض تفاصيله") + avgBars(its) + "</div>" +
+        "<div>" + head("حسب سبب الزيارة", "متوسط كل تصنيف لكل فئة من الزوار") + heatmap(rows) + "</div></div></section>";
+    } else if (tab === "tracks") {
+      html = '<section class="sec"><div class="cols">' +
+        "<div>" + head("ترتيب التدريبات والفعاليات", "حسب متوسط التقييم في الفترة المختارة") + ranking(rows) + "</div>" +
+        "<div>" + head("أسماء التدريبات والفعاليات", "تظهر للطلاب كقائمة اختيار في خطوة المسارات") + '<div id="actsBox">' + actsPanel() + "</div></div></div></section>";
+    } else if (tab === "voice") {
+      html = '<section class="sec" id="commentsBox">' + commentsSection(rows) + "</section>";
+    } else if (tab === "reports") {
+      html = '<section class="sec">' + head("مقارنة شهر بشهر", "الفرق في كل تصنيف بين شهرين") + '<div id="cmpBox">' + monthCompare() + "</div></section>" +
+        '<section class="sec">' + head("آخر التقييمات", "أحدث 50 تقييماً في الفترة المختارة، مع إمكانية الحذف") + table(rows) + "</section>";
+    }
+    $("#dash").innerHTML = '<div class="view">' + html + "</div>";
     post(animate);
-    var sb = $("#cSearch");
-    if (sb) sb.addEventListener("input", function () { cf.search = sb.value; $("#commentsList").outerHTML = commentsList(currentRows()); });
+    bindSearch();
   }
+  function head(t, sub, extra) { return '<div class="sec-head"><div><h2>' + t + "</h2>" + (sub ? "<p>" + sub + "</p>" : "") + "</div>" + (extra || "") + "</div>"; }
   function currentRows() { return all.filter(within(win())); }
+  function bindSearch() {
+    var sb = $("#cSearch");
+    if (sb) sb.addEventListener("input", function () { cf.search = sb.value; cf.limit = 20; $("#commentsList").outerHTML = commentsList(currentRows()); });
+  }
 
   function post(animate) {
     var reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -234,10 +247,6 @@
       })(t0);
     });
   }
-
-  function panel(title, sub, body, extra) {
-    return '<div class="card panel"><div class="panel-head"><div><h3>' + title + '</h3><p class="sub">' + sub + "</p></div>" + (extra || "") + "</div>" + body + "</div>";
-  }
   function num(v, dec, sign) {
     if (v == null || isNaN(v)) return "–";
     return '<span data-count="' + v + '" data-dec="' + (dec || 0) + '"' + (sign ? ' data-sign="1"' : "") + ">" + (sign && v > 0 ? "+" : "") + v.toFixed(dec || 0) + "</span>";
@@ -251,109 +260,102 @@
       var m = respMean(r); return (m != null && m <= 2) || isSensitive(r);
     });
     if (!list.length) return "";
-    var shown = list.slice(0, 3);
-    return '<div class="alerts">' + shown.map(function (r) {
+    return '<div class="alerts">' + list.slice(0, 3).map(function (r) {
       var why = isSensitive(r) ? "تعليق فيه كلمة حساسة" : "تقييم منخفض جداً (" + fmt(respMean(r)) + " من 5)";
       var quote = r.improve || r.good;
-      return '<div class="alert"><span class="a-ico" aria-hidden="true">⚠</span><div class="a-txt"><b>' + why + "</b> · " +
-        dateLabel(ts(r), { weekday: "long", day: "numeric", month: "short" }) + (quote ? " — <q>" + esc(quote.slice(0, 120)) + "</q>" : "") +
-        (r.contact ? ' <span class="ctag reply">بدّه رد</span>' : "") + "</div>" + statusSeg(r) + "</div>";
-    }).join("") + (list.length > 3 ? '<p class="small-note">و' + plural(list.length - 3, "تنبيه آخر", "تنبيهات أخرى") + " — راجع «صوت الطلاب» بفلتر «منخفض».</p>" : "") + "</div>";
+      return '<div class="alert"><div class="a-txt"><b>' + why + "</b>، " +
+        dateLabel(ts(r), { weekday: "long", day: "numeric", month: "short" }) + (quote ? ": <q>" + esc(quote.slice(0, 120)) + "</q>" : "") +
+        (r.contact ? ' <span class="ctag reply">ينتظر رداً</span>' : "") + "</div>" + statusSeg(r) + "</div>";
+    }).join("") + (list.length > 3 ? '<p class="small-note">و' + plural(list.length - 3, "تنبيه آخر", "تنبيهات أخرى") + " في «صوت الطلاب».</p>" : "") + "</div>";
   }
 
   /* A1 — مؤشر صحة المكان */
-  function gauge(s, p, rows) {
+  function gauge(s, p) {
     var h = health(s.avg), ph = health(p.avg);
     var cls = h == null ? "" : h >= 75 ? "good" : h >= 50 ? "mid" : "bad";
     var label = h == null ? "لا بيانات" : h >= 85 ? "ممتاز" : h >= 70 ? "جيد جداً" : h >= 55 ? "جيد" : h >= 40 ? "يحتاج تحسين" : "ضعيف";
     var d = range && h != null && ph != null ? h - ph : null;
-    return '<div class="card gauge-card"><p class="sub" style="margin:0">مؤشر صحة المكان</p>' +
-      '<svg class="gauge" viewBox="0 0 220 128" aria-hidden="true">' +
-      '<path class="g-track" d="M20 115 A90 90 0 0 1 200 115" fill="none" stroke-width="16" stroke-linecap="round" pathLength="100"/>' +
-      (h != null ? '<path d="M20 115 A90 90 0 0 1 200 115" fill="none" stroke="var(--s-' + cls + ')" stroke-width="16" stroke-linecap="round" pathLength="100" stroke-dasharray="' + Math.max(1, h) + ' 100"/>' : "") +
-      '<text x="110" y="104" text-anchor="middle" font-size="44" font-weight="700">' + (h == null ? "–" : h) + "</text>" +
-      '<text x="110" y="124" text-anchor="middle" font-size="12" fill="var(--muted)" style="fill:var(--muted)">من 100</text></svg>' +
+    return '<div class="gauge-box"><svg class="gauge" viewBox="0 0 220 128" aria-hidden="true">' +
+      '<path class="g-track" d="M20 115 A90 90 0 0 1 200 115" fill="none" stroke-width="14" stroke-linecap="round" pathLength="100"/>' +
+      (h != null ? '<path class="g-val" d="M20 115 A90 90 0 0 1 200 115" fill="none" stroke-width="14" stroke-linecap="round" pathLength="100" stroke-dasharray="' + Math.max(1, h) + ' 100"/>' : "") +
+      '<text x="110" y="102" text-anchor="middle" font-size="46" font-weight="700">' + (h == null ? "–" : h) + "</text>" +
+      '<text x="110" y="124" text-anchor="middle" font-size="12" style="fill:var(--muted)">صحة المكان من 100</text></svg>' +
       '<div class="g-label c-' + cls + '">' + label + "</div>" +
       '<div class="g-sub">' + (d == null ? "محسوب من متوسط كل الدرجات" : (Math.abs(d) < 1 ? "بدون تغيير" : (d > 0 ? "▲ " : "▼ ") + Math.abs(d) + " نقطة") + " عن الفترة السابقة") + "</div></div>";
   }
 
-  /* A2 — الملخص المكتوب */
+  /* A2 — الخلاصة */
   function summary(items, pitems, rows, s) {
     var ok = items.filter(function (x) { return x.n; }).sort(function (a, b) { return b.avg - a.avg; });
     var lines = [];
     if (ok.length) {
       var best = ok[0], worst = ok[ok.length - 1];
-      lines.push({ c: "good", i: "▲", t: "الأعلى تقييماً <b>«" + best.it.base + "»</b> بمتوسط " + fmt(best.avg) + " من " + best.n + " تقييم." });
+      lines.push({ c: "good", i: "▲", t: "الأعلى تقييماً <b>" + best.it.base + "</b> بمتوسط " + fmt(best.avg) + " من " + plural(best.n, "تقييم", "تقييمات") + "." });
       var tc = topicCounts(rows.filter(function (r) { var m = respMean(r); return m != null && m < 4; }))[0];
-      lines.push({ c: "bad", i: "▼", t: "الأضعف <b>«" + worst.it.base + "»</b> (" + fmt(worst.avg) + ") — أولوية التحسين" + (tc && tc.n ? "، وأكثر ملاحظة مكتوبة عن <b>" + tc.name + "</b> (" + plural(tc.n, "تعليق", "تعليقات") + ")." : ".") });
+      lines.push({ c: "bad", i: "▼", t: "الأضعف <b>" + worst.it.base + "</b> بمتوسط " + fmt(worst.avg) + "، وهو أولوية التحسين" + (tc && tc.n ? ". أكثر ملاحظة مكتوبة كانت عن <b>" + tc.name + "</b> (" + plural(tc.n, "تعليق", "تعليقات") + ")." : ".") });
     }
     var moves = items.map(function (x, i) { var q = pitems[i]; return q && x.n >= 3 && q.n >= 3 ? { x: x, d: x.avg - q.avg } : null; })
       .filter(Boolean).sort(function (a, b) { return Math.abs(b.d) - Math.abs(a.d); });
     if (moves.length && Math.abs(moves[0].d) >= 0.15) {
       var m = moves[0];
-      lines.push({ c: m.d > 0 ? "good" : "bad", i: m.d > 0 ? "↗" : "↘", t: "<b>«" + m.x.it.base + "»</b> " + (m.d > 0 ? "تحسّن" : "تراجع") + " بـ " + fmt(Math.abs(m.d)) + " عن الفترة السابقة." });
+      lines.push({ c: m.d > 0 ? "good" : "bad", i: m.d > 0 ? "↗" : "↘", t: "<b>" + m.x.it.base + "</b> " + (m.d > 0 ? "تحسّن" : "تراجع") + " بمقدار " + fmt(Math.abs(m.d)) + " عن الفترة السابقة." });
     } else {
-      lines.push({ c: "mid", i: "◆", t: "وصل " + plural(s.n, "تقييم", "تقييمات") + " في هذه الفترة، و" + fmt(s.sat, 0) + "% منهم راضين (متوسطهم 4 فأكثر)." });
+      lines.push({ c: "mid", i: "◆", t: "وصل " + plural(s.n, "تقييم", "تقييمات") + " في هذه الفترة، و" + fmt(s.sat, 0) + "% منهم راضون." });
     }
     var fresh = rows.filter(function (r) { return hasText(r) && statusOf(r) === "new"; }).length;
-    if (fresh) lines.push({ c: "mid", i: "✎", t: plural(fresh, "ملاحظة جديدة", "ملاحظات جديدة") + " بانتظار المتابعة في «صوت الطلاب»." });
-    return '<div class="card summary-card"><h3>الخلاصة</h3><ul class="summary-list">' + lines.map(function (l) {
+    if (fresh) lines.push({ c: "mid", i: "✎", t: plural(fresh, "ملاحظة جديدة", "ملاحظات جديدة") + " تنتظر المتابعة في <b>صوت الطلاب</b>." });
+    return '<ul class="summary-list">' + lines.map(function (l) {
       return '<li><span class="s-ico c-' + l.c + '" aria-hidden="true">' + l.i + "</span><span>" + l.t + "</span></li>";
-    }).join("") + "</ul></div>";
+    }).join("") + "</ul>";
   }
 
-  /* A3 — بطاقات الأرقام مع خطوط الاتجاه */
+  /* A3 — الأرقام مع خطوط الاتجاه */
   function spark(vals) {
     var pts = vals.map(function (v, i) { return v == null ? null : [i, v]; }).filter(Boolean);
-    if (pts.length < 2) return '<svg class="spark" viewBox="0 0 100 34"></svg>';
+    if (pts.length < 2) return '<svg class="spark" viewBox="0 0 100 30"></svg>';
     var min = Math.min.apply(null, pts.map(function (p) { return p[1]; })), max = Math.max.apply(null, pts.map(function (p) { return p[1]; }));
     if (max === min) { max += 1; min -= 1; }
-    var X = function (i) { return 3 + i / (vals.length - 1) * 94; }, Y = function (v) { return 30 - (v - min) / (max - min) * 26; };
+    var X = function (i) { return 2 + i / (vals.length - 1) * 96; }, Y = function (v) { return 27 - (v - min) / (max - min) * 24; };
     var d = pts.map(function (p, k) { return (k ? "L" : "M") + X(p[0]).toFixed(1) + " " + Y(p[1]).toFixed(1); }).join(" ");
     var last = pts[pts.length - 1];
-    return '<svg class="spark" viewBox="0 0 100 34" preserveAspectRatio="none" aria-hidden="true"><path class="area" d="' + d + " L" + X(last[0]).toFixed(1) + " 34 L" + X(pts[0][0]).toFixed(1) + ' 34Z"/><path class="line" d="' + d + '" vector-effect="non-scaling-stroke"/></svg>';
+    return '<svg class="spark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"><path class="area" d="' + d + " L" + X(last[0]).toFixed(1) + " 30 L" + X(pts[0][0]).toFixed(1) + ' 30Z"/><path class="line" d="' + d + '" vector-effect="non-scaling-stroke"/></svg>';
   }
   function delta(cur, prev, unit, d) {
     if (!range || cur == null || prev == null) return "";
     var x = cur - prev; if (Math.abs(x) < 0.05) return '<div class="k-sub">بدون تغيير عن الفترة السابقة</div>';
-    return '<div class="k-sub c-' + (x > 0 ? "good" : "bad") + '">' + (x > 0 ? "▲ " : "▼ ") + fmt(Math.abs(x), d) + (unit || "") + ' <span class="muted">عن الفترة السابقة</span></div>';
+    return '<div class="k-sub"><span class="c-' + (x > 0 ? "good" : "bad") + '">' + (x > 0 ? "▲ " : "▼ ") + fmt(Math.abs(x), d) + (unit || "") + '</span> <span class="muted">عن الفترة السابقة</span></div>';
   }
   function kpis(s, p, bk) {
-    var cnt = bk.map(function (b) { return b.rows.length; });
-    var av = bk.map(function (b) { return stats(b.rows).avg; });
-    var sat = bk.map(function (b) { return stats(b.rows).sat; });
-    var np = bk.map(function (b) { return stats(b.rows).nps; });
+    var st = bk.map(function (b) { return stats(b.rows); });
     var npsLbl = s.nps == null ? "" : s.nps >= 50 ? "ممتاز" : s.nps >= 0 ? "جيد" : "يحتاج عمل";
-    return '<div class="kpis">' +
-      kpi("عدد التقييمات", num(s.n), "", range ? delta(s.n, p.n, "", 0) : '<div class="k-sub">منذ البداية</div>', spark(cnt)) +
-      kpi("متوسط الرضا العام", '<span class="c-' + sClass(s.avg) + '">' + num(s.avg, 1) + "</span>", "<small> / 5</small>", delta(s.avg, p.avg, ""), spark(av)) +
-      kpi("نسبة الراضين", num(s.sat, 0), "<small>%</small>", delta(s.sat, p.sat, "%", 0) || '<div class="k-sub">متوسطهم 4 فأكثر</div>', spark(sat)) +
-      kpi("مؤشر التوصية NPS", num(s.nps, 0, true), "", '<div class="k-sub">' + npsLbl + " · " + s.pro + " مروّج · " + s.det + " منتقد</div>", spark(np)) +
+    return '<div class="stats">' +
+      kpi("عدد التقييمات", num(s.n), "", range ? delta(s.n, p.n, "", 0) : '<div class="k-sub">منذ البداية</div>', spark(bk.map(function (b) { return b.rows.length; }))) +
+      kpi("متوسط الرضا", num(s.avg, 1), "<small> / 5</small>", delta(s.avg, p.avg, ""), spark(st.map(function (x) { return x.avg; }))) +
+      kpi("نسبة الراضين", num(s.sat, 0), "<small>%</small>", delta(s.sat, p.sat, "%", 0) || '<div class="k-sub">متوسطهم 4 فأكثر</div>', spark(st.map(function (x) { return x.sat; }))) +
+      kpi("مؤشر التوصية NPS", num(s.nps, 0, true), "", '<div class="k-sub">' + npsLbl + "، " + plural(s.pro, "مروّج", "مروّجين") + " و" + plural(s.det, "منتقد", "منتقدين") + "</div>", spark(st.map(function (x) { return x.nps; }))) +
       "</div>";
   }
   function kpi(label, val, suffix, sub, sp) {
-    return '<div class="card kpi"><div class="k-label">' + label + '</div><div class="k-value">' + val + suffix + "</div>" + (sub || "") + (sp || "") + "</div>";
+    return '<div class="stat"><div class="k-label">' + label + '</div><div class="k-value">' + val + suffix + "</div>" + (sub || "") + (sp || "") + "</div>";
   }
 
   /* B5 — المجموعات */
   function groupsRow(rows) {
     var cards = GROUPS.map(function (g) {
-      var st = g.items.map(function (it) { return itemStats(rows, it); });
       var pooled = [];
       g.items.forEach(function (it) { rows.forEach(function (r) { var v = (r.scores || {})[it.id]; if (v) pooled.push(v); }); });
-      return groupCard(g.title, mean(pooled), st.map(function (x) { return { id: x.it.id, name: x.it.base, avg: x.avg }; }));
+      return groupCard(g.title, mean(pooled), g.items.map(function (it) { var x = itemStats(rows, it); return { id: it.id, name: it.base, avg: x.avg }; }));
     });
-    var ts2 = TRACKS.map(function (t) { return trackStats(rows, t); });
     var pooledT = [];
     rows.forEach(function (r) { Object.keys(r.tracks || {}).forEach(function (k) { if (r.tracks[k].score) pooledT.push(r.tracks[k].score); }); });
-    cards.push(groupCard("المسارات", mean(pooledT), ts2.map(function (x) { return { name: x.t.title, avg: x.avg }; })));
+    cards.push(groupCard("المسارات", mean(pooledT), TRACKS.map(function (t) { var x = trackStats(rows, t); return { name: t.title, avg: x.avg }; })));
     return '<div class="groups">' + cards.join("") + "</div>";
   }
   function groupCard(title, avg, list) {
-    return '<div class="card group-card"><div class="gh"><h3>' + title + '</h3><span class="gv c-' + sClass(avg) + '">' + fmt(avg) + "<small> / 5</small></span></div>" +
+    return '<div class="group"><div class="gh"><h3>' + title + '</h3><span class="gv c-' + sClass(avg) + '">' + fmt(avg) + "</span></div>" +
       '<div class="g-items">' + list.map(function (x) {
         var tag = x.id ? "button" : "div";
-        return "<" + tag + (x.id ? ' type="button" data-cat="' + x.id + '"' : "") + ' class="g-item c-' + sClass(x.avg) + '"><span class="n" style="color:var(--ink-2)">' + esc(x.name) + '</span><span class="mini"><i class="grow" style="width:' + (x.avg ? x.avg / 5 * 100 : 0) + '%"></i></span><span class="v">' + fmt(x.avg) + "</span></" + tag + ">";
+        return "<" + tag + (x.id ? ' type="button" data-cat="' + x.id + '"' : "") + ' class="g-item"><span class="n">' + esc(x.name) + '</span><span class="mini"><i class="grow" style="width:' + (x.avg ? x.avg / 5 * 100 : 0) + '%"></i></span><span class="v c-' + sClass(x.avg) + '">' + fmt(x.avg) + "</span></" + tag + ">";
       }).join("") + "</div></div>";
   }
 
@@ -362,22 +364,9 @@
     var sorted = items.filter(function (x) { return x.n; }).sort(function (a, b) { return b.avg - a.avg; });
     if (!sorted.length) return '<p class="muted">لا توجد بيانات في هذه الفترة.</p>';
     return '<div class="hbars">' + sorted.map(function (x) {
-      return '<div class="hbar click" role="button" tabindex="0" data-cat="' + x.it.id + '" data-tip="<b>' + esc(x.it.base) + "</b><br>المتوسط " + fmt(x.avg, 2) + " · " + sWord(x.avg) + "<br>" + x.n + " تقييم" + (x.skipped ? " · " + x.skipped + " لم يجرّب" : "") + '">' +
-        '<span class="name"><span class="dot c-' + sClass(x.avg) + '"></span>' + esc(x.it.base) + '</span><span class="track"><span class="fill s-' + sClass(x.avg) + ' grow" style="width:' + (x.avg / 5 * 100) + '%"></span></span><span class="val c-' + sClass(x.avg) + '">' + fmt(x.avg) + "</span></div>";
-    }).join("") + '</div><div class="legend"><span><span class="dot c-good"></span>جيد (4 فأكثر)</span><span><span class="dot c-mid"></span>متوسط (3 – 4)</span><span><span class="dot c-bad"></span>ضعيف (أقل من 3)</span></div>';
-  }
-
-  function distChart(items) {
-    var html = '<div class="dist">' + items.map(function (x) {
-      var name = '<span class="name" data-cat="' + x.it.id + '" style="cursor:pointer">' + esc(x.it.base) + "</span>";
-      if (!x.n) return '<div class="dist-row">' + name + '<span class="muted" style="font-size:12px">لا بيانات</span></div>';
-      return '<div class="dist-row">' + name + '<div class="stack">' + x.dist.map(function (c, i) {
-        if (!c) return "";
-        var pct = c / x.n * 100;
-        return '<span style="width:' + pct + '%;background:var(--d' + (i + 1) + ')" data-tip="<b>' + esc(x.it.base) + "</b><br>" + SCALE[i].face + " " + SCALE[i].label + ": " + c + " (" + fmt(pct, 0) + '%)"></span>';
-      }).join("") + "</div></div>";
-    }).join("") + "</div>";
-    return html + '<div class="legend">' + SCALE.map(function (s, i) { return '<span><i style="background:var(--d' + (i + 1) + ')"></i>' + s.v + " " + s.label + "</span>"; }).join("") + "</div>";
+      return '<div class="hbar" role="button" tabindex="0" data-cat="' + x.it.id + '" data-tip="<b>' + esc(x.it.base) + "</b><br>المتوسط " + fmt(x.avg, 2) + "، " + sWord(x.avg) + "<br>" + plural(x.n, "تقييم", "تقييمات") + (x.skipped ? "، و" + x.skipped + " لم يجرّب" : "") + '">' +
+        '<span class="name">' + esc(x.it.base) + '</span><span class="track"><span class="fill s-' + sClass(x.avg) + ' grow" style="width:' + (x.avg / 5 * 100) + '%"></span></span><span class="val c-' + sClass(x.avg) + '">' + fmt(x.avg) + "</span></div>";
+    }).join("") + '</div><div class="legend"><span class="c-good"><i></i><span style="color:var(--muted)">جيد، 4 فأكثر</span></span><span class="c-mid"><i></i><span style="color:var(--muted)">متوسط، من 3 إلى 4</span></span><span class="c-bad"><i></i><span style="color:var(--muted)">ضعيف، أقل من 3</span></span></div>';
   }
 
   /* B6 — حسب سبب الزيارة */
@@ -385,32 +374,30 @@
     var cols = VISIT.map(function (v) { return { v: v, rows: rows.filter(function (r) { return (r.visit || []).indexOf(v.id) >= 0; }) }; })
       .filter(function (c) { return c.rows.length; });
     if (!cols.length) return '<p class="muted">لا توجد بيانات عن سبب الزيارة.</p>';
-    var head = "<tr><th></th>" + cols.map(function (c) { return "<th>" + c.v.title + '<br><span class="small-note latin">' + c.rows.length + "</span></th>"; }).join("") + "</tr>";
+    var hd = "<tr><th></th>" + cols.map(function (c) { return "<th>" + c.v.title + '<br><span class="small-note latin">' + c.rows.length + "</span></th>"; }).join("") + "</tr>";
     var body = ITEMS.map(function (it) {
-      return '<tr><th data-cat="' + it.id + '" style="cursor:pointer">' + esc(it.base) + "</th>" + cols.map(function (c) {
+      return '<tr><th data-cat="' + it.id + '">' + esc(it.base) + "</th>" + cols.map(function (c) {
         var x = itemStats(c.rows, it);
         if (!x.n) return '<td class="empty">–</td>';
-        var k = sClass(x.avg);
-        return '<td class="c-' + k + '" style="background:color-mix(in srgb, var(--s-' + k + ') ' + (k === "good" ? 16 : 22) + '%, var(--surface))" data-tip="<b>' + esc(it.base) + "</b> · " + c.v.title + "<br>المتوسط " + fmt(x.avg, 2) + " من " + x.n + ' تقييم">' + fmt(x.avg) + "</td>";
+        return '<td class="h-' + sClass(x.avg) + '" data-tip="<b>' + esc(it.base) + "</b>، " + c.v.title + "<br>المتوسط " + fmt(x.avg, 2) + " من " + plural(x.n, "تقييم", "تقييمات") + '">' + fmt(x.avg) + "</td>";
       }).join("") + "</tr>";
     }).join("");
-    return '<div class="heat-wrap"><table class="heat"><thead>' + head + "</thead><tbody>" + body + "</tbody></table></div>" +
-      '<p class="small-note" style="margin:10px 0 0">الرقم تحت كل فئة = عدد التقييمات. الطالب ممكن يختار أكتر من سبب.</p>';
+    return '<div class="heat-wrap"><table class="heat"><thead>' + hd + "</thead><tbody>" + body + "</tbody></table></div>" +
+      '<p class="small-note" style="margin:12px 0 0">الرقم تحت كل فئة هو عدد التقييمات. يمكن للطالب اختيار أكثر من سبب.</p>';
   }
 
   function timeline(bk) {
     if (!bk.length) return '<p class="muted">لا توجد بيانات.</p>';
-    var counts = bk.map(function (b) { return b.rows.length; });
-    var W = 560, H = 190, padL = 28, padB = 22, padT = 10, max = Math.max.apply(null, counts.concat([1])), nb = bk.length;
-    var step = (W - padL) / nb, bw = Math.max(2, Math.min(18, step - 2));
+    var W = Math.max(340, Math.min(1160, ($("#dash") || document.body).clientWidth - 40)), H = 170, padL = 28, padB = 22, padT = 10, nb = bk.length;
+    var max = Math.max.apply(null, bk.map(function (b) { return b.rows.length; }).concat([1]));
+    var step = (W - padL) / nb, bw = Math.max(2, Math.min(22, step - 3));
     var ticks = [0, Math.ceil(max / 2), max].filter(function (v, i, a) { return a.indexOf(v) === i; });
     var y = function (v) { return H - padB - v / max * (H - padB - padT); };
     var svg = '<svg class="timeline" viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none" direction="ltr">';
     ticks.forEach(function (t) { svg += '<line class="axis" x1="' + padL + '" x2="' + W + '" y1="' + y(t) + '" y2="' + y(t) + '"/><text x="' + (padL - 6) + '" y="' + (y(t) + 4) + '" text-anchor="end">' + t + "</text>"; });
     bk.forEach(function (b, i) {
       var c = b.rows.length, x = padL + i * step + (step - bw) / 2;
-      var label = (b.step > 1 ? "أسبوع " : "") + dateLabel(b.start);
-      var tip = "<b>" + label + "</b><br>" + c + " تقييم" + (c ? " · متوسط " + fmt(stats(b.rows).avg) : "");
+      var tip = "<b>" + (b.step > 1 ? "أسبوع " : "") + dateLabel(b.start) + "</b><br>" + plural(c, "تقييم", "تقييمات") + (c ? "، المتوسط " + fmt(stats(b.rows).avg) : "");
       svg += '<rect class="hit" x="' + (padL + i * step) + '" y="' + padT + '" width="' + step + '" height="' + (H - padB - padT) + '" fill="transparent" data-tip="' + esc(tip) + '"/>';
       if (c) svg += '<rect class="bar" x="' + x + '" y="' + y(c) + '" width="' + bw + '" height="' + (H - padB - y(c)) + '" rx="' + Math.min(4, bw / 2) + '" pointer-events="none"/>';
       if (i === 0 || i === nb - 1 || i === Math.floor(nb / 2)) svg += '<text x="' + (x + bw / 2) + '" y="' + (H - 5) + '" text-anchor="' + (i === 0 ? "start" : i === nb - 1 ? "end" : "middle") + '">' + dateLabel(b.start) + "</text>";
@@ -432,9 +419,9 @@
       .sort(function (a, b) { return b.avg - a.avg || b.v.length - a.v.length; });
     if (!list.length) return '<p class="muted">لا توجد أسماء مذكورة في هذه الفترة.</p>';
     var T = {}; TRACKS.forEach(function (t) { T[t.id] = t; });
-    return '<div class="rank" style="max-height:420px;overflow:auto">' + list.map(function (m) {
+    return '<div class="rank">' + list.map(function (m) {
       var t = T[m.track] || { icon: "event", title: m.track };
-      return '<div class="rank-row"><span class="q-icon">' + icon(t.icon) + '</span><span class="nm">' + esc(m.name) + "<small>" + t.title + '</small></span><span class="cnt">' + plural(m.v.length, "تقييم", "تقييمات") + "</span>" + pill(m.avg) + "</div>";
+      return '<div class="rank-row"><span class="q-icon">' + icon(t.icon) + '</span><span class="nm">' + esc(m.name) + "<small>" + t.title + '</small></span><span class="cnt">' + plural(m.v.length, "تقييم", "تقييمات") + '</span><span class="sc c-' + sClass(m.avg) + '">' + fmt(m.avg) + "</span></div>";
     }).join("") + "</div>";
   }
 
@@ -447,7 +434,7 @@
       var mine = acts.filter(function (a) { return a.track === t.id; });
       return "<div><h4>" + icon(t.icon) + t.title + ' <span class="small-note latin">' + mine.length + '</span></h4><div class="act-chips">' +
         (mine.length ? mine.map(function (a) { return '<span class="act-chip">' + esc(a.name) + '<button type="button" data-act-del="' + a.id + '" aria-label="حذف ' + esc(a.name) + '">✕</button></span>'; }).join("")
-          : '<span class="small-note">لا أسماء — الطالب يكتب الاسم بنفسه</span>') + "</div></div>";
+          : '<span class="small-note">لا توجد أسماء، والطالب يكتب الاسم بنفسه</span>') + "</div></div>";
     }).join("");
     return form + '<div class="act-list">' + lists + "</div>";
   }
@@ -466,13 +453,13 @@
     });
     function chip(key, val, label, n) { return '<button type="button" class="fchip" data-cf="' + key + ":" + val + '" aria-pressed="' + (String(cf[key]) === String(val)) + '">' + label + (n != null ? " <b>" + n + "</b>" : "") + "</button>"; }
     var topics = topicCounts(rows);
-    return '<div class="panel-head"><div><h3>صوت الطلاب</h3><p class="sub">' + plural(withText.length, "ملاحظة مكتوبة", "ملاحظات مكتوبة") + " · " + counts.new + " جديدة · " + counts.reply + ' بدهم رد</p></div><input class="field" id="cSearch" placeholder="بحث…" style="max-width:180px;padding:7px 12px" value="' + esc(cf.search) + '"></div>' +
-      '<div class="c-tools">' +
-      '<div class="c-row"><span class="lbl">الحالة</span>' + chip("status", "all", "الكل") + STATUS.map(function (s) { return chip("status", s.id, s.t, counts[s.id]); }).join("") +
-        '<button type="button" class="fchip" data-cf="reply:toggle" aria-pressed="' + cf.reply + '">📞 بدهم رد <b>' + counts.reply + "</b></button></div>" +
-      '<div class="c-row"><span class="lbl">الدرجة</span>' + chip("score", "all", "الكل") + chip("score", "low", "منخفض (2 وأقل)", counts.low) + chip("score", "mid", "متوسط", counts.mid) + chip("score", "high", "مرتفع (4 فأكثر)", counts.high) + "</div>" +
-      (topics.length ? '<div class="c-row"><span class="lbl">الموضوع</span>' + chip("topic", "", "الكل") + topics.map(function (t) { return chip("topic", t.id, t.name, t.n); }).join("") + "</div>" : "") +
-      "</div>" + commentsList(rows);
+    return '<div class="voice"><aside class="voice-side">' +
+      '<input class="field" id="cSearch" placeholder="بحث في الملاحظات" value="' + esc(cf.search) + '" aria-label="بحث في الملاحظات">' +
+      '<div><h4>الحالة</h4><div class="fgroup">' + chip("status", "all", "الكل") + STATUS.map(function (s) { return chip("status", s.id, s.t, counts[s.id]); }).join("") +
+        '<button type="button" class="fchip" data-cf="reply:toggle" aria-pressed="' + cf.reply + '">ينتظرون رداً <b>' + counts.reply + "</b></button></div></div>" +
+      '<div><h4>الدرجة</h4><div class="fgroup">' + chip("score", "all", "الكل") + chip("score", "low", "منخفضة", counts.low) + chip("score", "mid", "متوسطة", counts.mid) + chip("score", "high", "مرتفعة", counts.high) + "</div></div>" +
+      (topics.length ? '<div><h4>الموضوع</h4><div class="fgroup">' + chip("topic", "", "الكل") + topics.map(function (t) { return chip("topic", t.id, t.name, t.n); }).join("") + "</div></div>" : "") +
+      '</aside><div style="min-width:0">' + head("صوت الطلاب", plural(withText.length, "ملاحظة مكتوبة", "ملاحظات مكتوبة") + "، منها " + counts.new + " جديدة") + commentsList(rows) + "</div></div>";
   }
   function commentsList(rows) {
     var q = norm(cf.search.trim());
@@ -487,18 +474,20 @@
       if (cf.topic && topicsOf(r).indexOf(cf.topic) < 0) return false;
       if (q && textOf(r).indexOf(q) < 0) return false;
       return true;
-    }).slice(0, 80);
-    if (!list.length) return '<div class="comments v3" id="commentsList"><p class="muted">لا توجد ملاحظات تطابق الفلاتر.</p></div>';
+    });
+    var total = list.length; list = list.slice(0, cf.limit);
+    if (!list.length) return '<div class="comments" id="commentsList"><p class="muted">لا توجد ملاحظات تطابق الفلاتر.</p></div>';
     var TN = {}; TOPICS.forEach(function (t) { TN[t.id] = t.name; });
-    return '<div class="comments v3" id="commentsList">' + list.map(function (r) {
+    return '<div class="comments" id="commentsList">' + list.map(function (r) {
       var m = respMean(r);
-      return '<div class="comment st-' + statusOf(r) + '" data-rid="' + esc(r.id) + '"><div class="meta"><span>' + new Date(r.ts).toLocaleString("ar", { dateStyle: "medium", timeStyle: "short" }) + "</span><span>" + pill(m) + (r.nps != null ? ' <span class="latin">NPS ' + r.nps + "</span>" : "") + "</span></div>" +
+      return '<div class="comment st-' + statusOf(r) + '"><div class="meta"><span>' + new Date(r.ts).toLocaleString("ar", { dateStyle: "medium", timeStyle: "short" }) + "</span><span>" + pill(m) + "</span></div>" +
         (r.good ? '<p class="g">' + esc(r.good) + "</p>" : "") + (r.improve ? '<p class="b">' + esc(r.improve) + "</p>" : "") +
-        '<div class="tags">' + (r.contact ? '<span class="ctag reply">📞 بدّه رد: <span class="latin" style="user-select:all">' + esc(r.contact) + "</span></span>" : "") +
+        '<div class="tags">' + (r.contact ? '<span class="ctag reply">ينتظر رداً: <span class="latin" style="user-select:all">' + esc(r.contact) + "</span></span>" : "") +
         topicsOf(r).map(function (t) { return '<span class="ctag">' + TN[t] + "</span>"; }).join("") + "</div>" +
         '<div class="c-foot">' + statusSeg(r) + delBtn(r.id) + "</div></div>";
-    }).join("") + "</div>";
+    }).join("") + (total > list.length ? '<div><button type="button" class="btn ghost small more-btn" id="moreComments">عرض ' + Math.min(20, total - list.length) + " ملاحظات أخرى (المتبقي " + (total - list.length) + ")</button></div>" : "") + "</div>";
   }
+  function pill(v) { return v == null ? '<span class="muted">–</span>' : '<span class="score-pill c-' + sClass(v) + '">' + fmt(v) + " / 5</span>"; }
   function statusSeg(r) {
     return '<span class="status-seg" role="group" aria-label="حالة المتابعة">' + STATUS.map(function (s) {
       return '<button type="button" data-st="' + s.id + '" data-rid="' + esc(r.id) + '" aria-pressed="' + (statusOf(r) === s.id) + '">' + s.t + "</button>";
@@ -513,10 +502,10 @@
     var rows = all.filter(byVisit);
     var keys = []; rows.forEach(function (r) { var k = monthKey(ts(r)); if (keys.indexOf(k) < 0) keys.push(k); });
     keys.sort().reverse();
-    if (keys.length < 2) return '<p class="muted">تحتاج تقييمات في شهرين على الأقل للمقارنة.</p>';
+    if (keys.length < 2) return '<p class="muted">تحتاج المقارنة تقييمات في شهرين على الأقل.</p>';
     if (keys.indexOf(month.a) < 0) month.a = keys[1];
     if (keys.indexOf(month.b) < 0) month.b = keys[0];
-    function sel(id, v) { return '<select class="field" id="' + id + '">' + keys.map(function (k) { return '<option value="' + k + '"' + (k === v ? " selected" : "") + ">" + monthName(k) + "</option>"; }).join("") + "</select>"; }
+    function sel(id, v) { return '<select class="field" id="' + id + '" aria-label="الشهر">' + keys.map(function (k) { return '<option value="' + k + '"' + (k === v ? " selected" : "") + ">" + monthName(k) + "</option>"; }).join("") + "</select>"; }
     var A = rows.filter(function (r) { return monthKey(ts(r)) === month.a; }), B = rows.filter(function (r) { return monthKey(ts(r)) === month.b; });
     function line(name, a, b, n) {
       var d = a != null && b != null ? b - a : null;
@@ -524,21 +513,21 @@
         (n ? (n[1] - n[0] > 0 ? "+" : "") + (n[1] - n[0]) : d == null ? "–" : Math.abs(d) < 0.05 ? "=" : (d > 0 ? "▲ " : "▼ ") + fmt(Math.abs(d))) + "</td></tr>";
     }
     var sa = stats(A), sb = stats(B);
-    return '<div class="month-pick">' + sel("monthA", month.a) + "<span>مقابل</span>" + sel("monthB", month.b) + "</div>" +
-      '<div class="table-wrap" style="max-height:440px"><table class="cmp"><thead><tr><th>التصنيف</th><th>' + monthName(month.a) + "</th><th>" + monthName(month.b) + "</th><th>الفرق</th></tr></thead><tbody>" +
+    return '<div class="month-pick" style="margin-bottom:14px">' + sel("monthA", month.a) + "<span>مقابل</span>" + sel("monthB", month.b) + "</div>" +
+      '<div class="table-wrap"><table class="cmp"><thead><tr><th>التصنيف</th><th>' + monthName(month.a) + "</th><th>" + monthName(month.b) + "</th><th>الفرق</th></tr></thead><tbody>" +
       line("<b>عدد التقييمات</b>", null, null, [A.length, B.length]) + line("<b>المتوسط العام</b>", sa.avg, sb.avg) +
       ITEMS.map(function (it) { return line(esc(it.base), itemStats(A, it).avg, itemStats(B, it).avg); }).join("") +
       "</tbody></table></div>";
   }
 
   function table(rows) {
-    var head = "<tr><th>التاريخ</th><th>الزيارة</th>" + ITEMS.map(function (it) { return "<th>" + esc(it.base) + "</th>"; }).join("") + "<th>NPS</th><th></th></tr>";
+    var hd = "<tr><th>التاريخ</th><th>الزيارة</th>" + ITEMS.map(function (it) { return "<th>" + esc(it.base) + "</th>"; }).join("") + "<th>NPS</th><th></th></tr>";
     var body = rows.slice(0, 50).map(function (r) {
       return "<tr><td>" + new Date(r.ts).toLocaleDateString("ar") + "</td><td>" + visitNames(r) + "</td>" +
-        ITEMS.map(function (it) { var v = (r.scores || {})[it.id]; return '<td class="num ' + (v ? "c-" + sClass(v) : "") + '">' + (v || "–") + "</td>"; }).join("") +
+        ITEMS.map(function (it) { var v = (r.scores || {})[it.id]; return '<td class="num ' + (v ? "c-" + sClass(v) : "muted") + '">' + (v || "–") + "</td>"; }).join("") +
         '<td class="num">' + (r.nps == null ? "–" : r.nps) + "</td><td>" + delBtn(r.id) + "</td></tr>";
     }).join("");
-    return '<div class="table-wrap" style="max-height:440px"><table class="data"><thead>' + head + "</thead><tbody>" + body + "</tbody></table></div>";
+    return '<div class="table-wrap" style="max-height:560px"><table class="data"><thead>' + hd + "</thead><tbody>" + body + "</tbody></table></div>";
   }
   function visitNames(r) {
     return (r.visit || []).map(function (id) { var v = VISIT.filter(function (x) { return x.id === id; })[0]; return v ? v.title : id; }).join("، ");
@@ -558,21 +547,21 @@
       return (v && v <= 2) || topicsOf(r).some(function (t) { return topics.indexOf(t) >= 0; });
     });
     var d = range && x.avg != null && px.avg != null ? x.avg - px.avg : null;
-    var html = '<div class="d-head"><span class="q-icon">' + icon(it.icon) + '</span><div><h2 id="drawerTitle">' + esc(it.base) + "</h2><p>" + esc(it.title) + " · " + (g ? g.title : "") + '</p></div><button class="d-close" type="button" id="drawerClose" aria-label="إغلاق">✕</button></div>' +
-      '<div class="d-kpis"><div class="card kpi"><div class="k-label">المتوسط</div><div class="k-value c-' + sClass(x.avg) + '">' + fmt(x.avg) + "</div>" +
+    var html = '<div class="d-head"><span class="q-icon">' + icon(it.icon) + '</span><div><h2 id="drawerTitle">' + esc(it.base) + "</h2><p>" + (g ? g.title : "") + '</p></div><button class="d-close" type="button" id="drawerClose" aria-label="إغلاق">✕</button></div>' +
+      '<div class="d-stats"><div class="stat"><div class="k-label">المتوسط</div><div class="k-value c-' + sClass(x.avg) + '">' + fmt(x.avg) + "</div>" +
       (d != null ? '<div class="k-sub c-' + (d >= 0 ? "good" : "bad") + '">' + (Math.abs(d) < 0.05 ? "بدون تغيير" : (d > 0 ? "▲ " : "▼ ") + fmt(Math.abs(d))) + "</div>" : '<div class="k-sub">' + sWord(x.avg) + "</div>") + "</div>" +
-      '<div class="card kpi"><div class="k-label">عدد المقيّمين</div><div class="k-value">' + x.n + "</div></div>" +
-      '<div class="card kpi"><div class="k-label">' + (it.optional ? "لم يجرّب" : "لم يقيّم") + '</div><div class="k-value">' + (rows.length ? Math.round(x.skipped / rows.length * 100) : 0) + "<small>%</small></div></div></div>" +
-      '<section class="card panel"><h3>توزيع الدرجات</h3><p class="sub">كم طالب اختار كل درجة</p><div class="d-dist">' +
+      '<div class="stat"><div class="k-label">المقيّمون</div><div class="k-value">' + x.n + "</div></div>" +
+      '<div class="stat"><div class="k-label">' + (it.optional ? "لم يجرّب" : "لم يقيّم") + '</div><div class="k-value">' + (rows.length ? Math.round(x.skipped / rows.length * 100) : 0) + "<small>%</small></div></div></div>" +
+      "<section><h3>توزيع الدرجات</h3><div class=\"d-dist\">" +
       SCALE.slice().reverse().map(function (s) {
         var c = x.dist[s.v - 1], pct = x.n ? c / x.n * 100 : 0;
-        return '<div class="row"><span>' + s.face + " " + s.label + '</span><span class="bar"><i style="width:' + pct + "%;background:var(--d" + s.v + ')"></i></span><span class="ct">' + c + " · " + fmt(pct, 0) + "%</span></div>";
+        return '<div class="row"><span>' + s.v + " " + s.label + '</span><span class="bar"><i style="width:' + pct + '%"></i></span><span class="ct">' + c + "، " + fmt(pct, 0) + "%</span></div>";
       }).join("") + "</div></section>" +
-      '<section class="card panel"><h3>المتوسط عبر الزمن</h3><p class="sub">' + (bk.length && bk[0].step > 1 ? "أسبوعياً" : "يومياً") + " في الفترة المختارة</p>" + trend(bk) + "</section>" +
-      '<section class="card panel"><h3>ملاحظات متعلقة</h3><p class="sub">من قيّموا هذا التصنيف بـ 2 أو أقل، أو كتبوا عن موضوعه</p>' +
+      "<section><h3>المتوسط عبر الزمن</h3>" + trend(bk) + "</section>" +
+      "<section><h3>ملاحظات متعلقة</h3><p class=\"sub\" style=\"margin:-8px 0 12px\">ممن قيّموه بـ 2 أو أقل، أو كتبوا عن موضوعه</p>" +
       (related.length ? '<div class="comments">' + related.slice(0, 30).map(function (r) {
         var v = (r.scores || {})[id];
-        return '<div class="comment"><div class="meta"><span>' + dateLabel(ts(r), { day: "numeric", month: "short", year: "numeric" }) + "</span><span>" + (v ? "قيّمه " + pill(v) : "") + "</span></div>" +
+        return '<div class="comment"><div class="meta"><span>' + dateLabel(ts(r), { day: "numeric", month: "short", year: "numeric" }) + "</span><span>" + (v ? pill(v) : "") + "</span></div>" +
           (r.good ? '<p class="g">' + esc(r.good) + "</p>" : "") + (r.improve ? '<p class="b">' + esc(r.improve) + "</p>" : "") + "</div>";
       }).join("") + "</div>" : '<p class="muted">لا توجد ملاحظات متعلقة في هذه الفترة.</p>') + "</section>";
     $("#drawer").innerHTML = html;
@@ -583,15 +572,15 @@
   function closeDetail() { $("#drawer").hidden = true; $("#drawerBack").hidden = true; document.body.style.overflow = ""; }
   function trend(bk) {
     var pts = bk.map(function (b, i) { return b.avg == null ? null : { i: i, b: b }; }).filter(Boolean);
-    if (pts.length < 2) return '<p class="muted">بيانات غير كافية لرسم الاتجاه.</p>';
-    var W = 520, H = 160, padL = 26, padR = 10, padB = 22, padT = 10, n = bk.length;
+    if (pts.length < 2) return '<p class="muted">لا توجد بيانات كافية لرسم الاتجاه.</p>';
+    var W = 500, H = 150, padL = 24, padR = 8, padB = 22, padT = 10, n = bk.length;
     var X = function (i) { return padL + (n === 1 ? 0 : i / (n - 1) * (W - padL - padR)); };
     var Y = function (v) { return padT + (5 - v) / 4 * (H - padT - padB); };
     var svg = '<svg class="trend" viewBox="0 0 ' + W + " " + H + '" direction="ltr">';
     [1, 3, 5].forEach(function (t) { svg += '<line class="axis" x1="' + padL + '" x2="' + (W - padR) + '" y1="' + Y(t) + '" y2="' + Y(t) + '"/><text x="' + (padL - 6) + '" y="' + (Y(t) + 4) + '" text-anchor="end">' + t + "</text>"; });
     svg += '<path class="tline" d="' + pts.map(function (p, k) { return (k ? "L" : "M") + X(p.i).toFixed(1) + " " + Y(p.b.avg).toFixed(1); }).join(" ") + '"/>';
     pts.forEach(function (p) {
-      svg += '<circle class="tdot" r="4.5" cx="' + X(p.i).toFixed(1) + '" cy="' + Y(p.b.avg).toFixed(1) + '" data-tip="' + esc("<b>" + dateLabel(p.b.start) + "</b><br>المتوسط " + fmt(p.b.avg, 2) + " من " + p.b.n) + '"/>';
+      svg += '<circle class="tdot" r="4" cx="' + X(p.i).toFixed(1) + '" cy="' + Y(p.b.avg).toFixed(1) + '" data-tip="' + esc("<b>" + dateLabel(p.b.start) + "</b><br>المتوسط " + fmt(p.b.avg, 2) + " من " + plural(p.b.n, "تقييم", "تقييمات")) + '"/>';
     });
     svg += '<text x="' + padL + '" y="' + (H - 5) + '">' + dateLabel(bk[0].start) + '</text><text x="' + (W - padR) + '" y="' + (H - 5) + '" text-anchor="end">' + dateLabel(bk[n - 1].start) + "</text>";
     return svg + "</svg>";
@@ -602,16 +591,25 @@
     if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches(".hbar[data-cat]")) { e.preventDefault(); openDetail(e.target.dataset.cat); }
   });
 
+  /* التبويبات */
+  function setTab(t) {
+    tab = t; try { localStorage.setItem("domains_admin_tab", t); } catch (e) {}
+    $$("#tabs button").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === t)); });
+    render(true); window.scrollTo({ top: 0 });
+  }
+  $$("#tabs button").forEach(function (b) { b.addEventListener("click", function () { setTab(b.dataset.tab); }); });
+  (function () { var t = null; try { t = localStorage.getItem("domains_admin_tab"); } catch (e) {} if (t && $('#tabs [data-tab="' + t + '"]')) { tab = t; $$("#tabs button").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === t)); }); } })();
+
   /* ---------- التفاعل (تفويض الأحداث) ---------- */
   document.addEventListener("click", function (e) {
     var b;
     if ((b = e.target.closest("#drawerClose"))) return closeDetail();
     if ((b = e.target.closest("[data-cat]")) && !e.target.closest("#drawer")) return openDetail(b.dataset.cat);
+    if ((b = e.target.closest("#moreComments"))) { cf.limit += 20; $("#commentsList").outerHTML = commentsList(currentRows()); return; }
     if ((b = e.target.closest("[data-cf]"))) {
-      var p = b.dataset.cf.split(":");
+      var p = b.dataset.cf.split(":"); cf.limit = 20;
       if (p[0] === "reply") cf.reply = !cf.reply; else cf[p[0]] = p[1];
-      $("#commentsBox").innerHTML = commentsSection(currentRows());
-      var sb = $("#cSearch"); if (sb) sb.addEventListener("input", function () { cf.search = sb.value; $("#commentsList").outerHTML = commentsList(currentRows()); });
+      $("#commentsBox").innerHTML = commentsSection(currentRows()); bindSearch();
       return;
     }
     if ((b = e.target.closest(".status-seg button"))) {

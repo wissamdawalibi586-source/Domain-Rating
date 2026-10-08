@@ -75,11 +75,11 @@ window.DOMAINS_VISIT = [
 ];
 
 window.DOMAINS_SCALE = [
-  { v: 1, face: "😞", label: "سيء" },
-  { v: 2, face: "😕", label: "مقبول" },
-  { v: 3, face: "😐", label: "جيد" },
-  { v: 4, face: "🙂", label: "جيد جداً" },
-  { v: 5, face: "🤩", label: "ممتاز" }
+  { v: 1, label: "ضعيف" },
+  { v: 2, label: "مقبول" },
+  { v: 3, label: "جيد" },
+  { v: 4, label: "جيد جداً" },
+  { v: 5, label: "ممتاز" }
 ];
 
 window.domainsIcon = function (name, cls) {

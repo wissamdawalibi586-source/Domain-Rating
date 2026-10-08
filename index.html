@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>قيّم تجربتك — Domains</title>
   <meta name="description" content="شاركنا رأيك بتجربتك في دومينز — دقيقتان تصنعان فرقاً.">
-  <meta name="theme-color" content="#0616C4">
+  <meta name="theme-color" content="#030B6E">
   <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,8 +18,7 @@
 
   <header class="topbar">
     <span class="wordmark" aria-label="Domains">D<svg class="o" viewBox="0 0 166 169" fill="none" stroke-width="27" aria-hidden="true"><circle cx="83" cy="19" r="69.5"/><circle cx="83" cy="196" r="69.5"/></svg>mains</span>
-    <div class="progress" aria-hidden="true"><i id="progressBar"></i></div>
-    <span class="steps-meta" id="stepsMeta"></span>
+    <div class="steps" id="steps" hidden><span class="steps-meta" id="stepsMeta"></span><span class="progress" id="progress" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span></div>
   </header>
 
   <main class="stage" id="stage">
@@ -27,15 +26,15 @@
     <section class="step active" data-step="0">
       <div class="hero">
         <svg class="mark" viewBox="0 0 166 169" fill="none" stroke-width="27" aria-hidden="true"><circle cx="83" cy="19" r="69.5"/><circle cx="83" cy="196" r="69.5"/></svg>
-        <h1>رأيك يصنع <em>دومينز</em> أفضل</h1>
-        <p>دقيقتان فقط لتخبرنا كيف كانت تجربتك في المكان، مع الفريق، في التطبيق، وفي المسارات التي شاركت بها.</p>
+        <h1>كيف كانت تجربتك في دومينز؟</h1>
+        <p>تقييمك يصل مباشرة لفريق الإدارة، ونستخدمه لنحسّن المكان والتدريبات والتطبيق.</p>
         <div class="visit-block">
-          <span class="label">شو سبب زيارتك اليوم؟ <span class="muted" style="font-weight:400">(اختر واحداً أو أكثر)</span></span>
+          <span class="label">سبب زيارتك اليوم <span class="muted" style="font-weight:400">(اختر واحداً أو أكثر)</span></span>
           <div class="chips" id="visitChips"></div>
         </div>
         <div class="hero-facts">
           <span><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>دقيقتان تقريباً</span>
-          <span><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>بدون اسم — تقييمك سري</span>
+          <span><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>بدون اسم، وتقييمك سري</span>
         </div>
         <p id="cooldownNote" class="muted" style="margin-top:22px;font-size:14px" hidden></p>
       </div>
@@ -47,8 +46,7 @@
     <!-- 4: المسارات -->
     <section class="step" data-step="4">
       <div class="section-head">
-        <div class="kicker">٤ — المسارات</div>
-        <h2>تجربتك في مسارات دومينز</h2>
+        <h2>المسارات التي شاركت بها</h2>
         <p>اختر المسارات التي شاركت بها مؤخراً وقيّم كل واحد منها. لم تشارك بعد؟ تابع فقط.</p>
       </div>
       <div class="tracks" id="trackToggles"></div>
@@ -58,25 +56,24 @@
     <!-- 5: الكلمة الأخيرة -->
     <section class="step final" data-step="5">
       <div class="section-head">
-        <div class="kicker">٥ — الكلمة الأخيرة</div>
-        <h2>قبل أن تذهب…</h2>
-        <p>سؤال أخير، ومساحة حرة لتقول ما تريد.</p>
+        <h2>كلمة أخيرة</h2>
+        <p>سؤال واحد، ومساحة حرة لملاحظاتك.</p>
       </div>
-      <div class="card q" id="npsCard">
-        <p class="q-title" style="margin-bottom:14px">ما مدى احتمال أن تنصح صديقاً بدومينز؟</p>
-        <div class="nps" id="nps" role="radiogroup" aria-label="من 0 إلى 10"></div>
-        <div class="nps-ends"><span>0 · مستبعد</span><span>10 · بالتأكيد</span></div>
+      <div class="q" id="npsCard">
+        <p class="q-title" style="margin-bottom:16px">ما مدى احتمال أن تنصح صديقاً بدومينز؟</p>
+        <div class="scale nps" id="nps" role="radiogroup" aria-label="من 0 إلى 10"></div>
+        <div class="scale-foot"><span>0 مستبعد</span><b id="npsVal"></b><span>10 بالتأكيد</span></div>
       </div>
-      <div class="card">
-        <label class="label" for="good">شو أكثر شي عجبك؟</label>
-        <textarea class="field" id="good" rows="2" maxlength="600" placeholder="لحظة، شخص، فكرة… أي شيء ترك أثراً"></textarea>
+      <div class="q">
+        <label class="label" for="good">ما أكثر شيء أعجبك؟</label>
+        <textarea class="field" id="good" rows="2" maxlength="600" placeholder="لحظة، شخص، فكرة، أي شيء ترك أثراً"></textarea>
       </div>
-      <div class="card">
-        <label class="label" for="improve">شو بتحب نحسّن؟</label>
+      <div class="q">
+        <label class="label" for="improve">ماذا تقترح أن نحسّن؟</label>
         <textarea class="field" id="improve" rows="3" maxlength="800" placeholder="اقتراحك يصل مباشرة لفريق الإدارة"></textarea>
       </div>
-      <div class="card">
-        <label class="label" for="contact">رقم أو بريد للتواصل <span class="muted" style="font-weight:400">(اختياري — فقط إذا حابب نرد عليك)</span></label>
+      <div class="q">
+        <label class="label" for="contact">رقم أو بريد للتواصل <span class="muted" style="font-weight:400">(اختياري، إذا أردت أن نرد عليك)</span></label>
         <input class="field" id="contact" maxlength="120" autocomplete="off">
         <input class="hp" id="website" tabindex="-1" autocomplete="off" aria-hidden="true">
       </div>
@@ -85,11 +82,11 @@
     <!-- 6: شكراً -->
     <section class="step" data-step="6">
       <div class="thanks">
-        <div class="burst"><svg viewBox="0 0 166 169" fill="none" stroke="var(--brand)" stroke-width="27" aria-hidden="true"><circle cx="83" cy="19" r="69.5"/><circle cx="83" cy="196" r="69.5"/></svg></div>
-        <h2>شكراً لك! 💙</h2>
-        <p>وصل تقييمك لفريق دومينز. كل ملاحظة نقرأها ونعمل عليها لنجعل المكان أفضل لك ولكل الشباب.</p>
-        <div class="summary-pill">متوسط تقييمك <b id="myAvg">–</b><span class="muted">/ 5</span></div>
-        <div id="thanksLinks" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"></div>
+        <div class="burst"><svg viewBox="0 0 166 169" fill="none" stroke="#FFFFFF" stroke-width="27" aria-hidden="true"><circle cx="83" cy="19" r="69.5"/><circle cx="83" cy="196" r="69.5"/></svg></div>
+        <h2>وصل تقييمك، شكراً لك</h2>
+        <p>نقرأ كل ملاحظة ونعمل عليها لنجعل دومينز أفضل لك ولكل الشباب.</p>
+        <div class="summary-pill"><span class="muted">متوسط تقييمك</span><b id="myAvg">–</b><span class="muted">من 5</span></div>
+        <div id="thanksLinks" style="display:flex;gap:10px;flex-wrap:wrap"></div>
       </div>
     </section>
   </main>

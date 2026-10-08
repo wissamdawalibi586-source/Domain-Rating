@@ -13,21 +13,21 @@
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
 
   /* ---------- بناء الواجهة ---------- */
+  /* مقياس من 5 خانات متصلة تمتلئ حتى الدرجة المختارة */
   function scaleHtml(key) {
     return '<div class="scale" role="radiogroup" data-key="' + key + '">' + SCALE.map(function (s) {
-      return '<button type="button" role="radio" aria-checked="false" data-v="' + s.v + '" aria-label="' + s.v + ' — ' + s.label + '">' +
-        '<span class="face">' + s.face + '</span><span class="lbl">' + s.label + "</span></button>";
-    }).join("") + "</div>";
+      return '<button type="button" role="radio" aria-checked="false" data-v="' + s.v + '" aria-label="' + s.v + " من 5، " + s.label + '">' + s.v + "</button>";
+    }).join("") + '</div><div class="scale-foot"><span>' + SCALE[0].label + '</span><b data-val="' + key + '"></b><span>' + SCALE[4].label + "</span></div>";
   }
 
   function buildGroups() {
     $("#groupSteps").innerHTML = GROUPS.map(function (g, gi) {
       return '<section class="step" data-step="' + (gi + 1) + '">' +
-        '<div class="section-head"><div class="kicker">' + AR_NUM[gi + 1] + " — " + g.step + "</div><h2>" + g.title + "</h2><p>" + g.subtitle + "</p></div>" +
+        '<div class="section-head"><h2>' + g.title + "</h2><p>" + g.subtitle + "</p></div>" +
         g.items.map(function (it) {
-          return '<div class="card q" id="q-' + it.id + '">' +
+          return '<div class="q" id="q-' + it.id + '">' +
             '<div class="q-head"><div class="q-icon">' + icon(it.icon) + "</div><div>" +
-            '<p class="q-title">' + it.title + "<small>" + it.base + "</small></p>" +
+            '<p class="q-title">' + it.title + "</p>" +
             '<p class="q-hint">' + it.hint + "</p></div></div>" + scaleHtml(it.id) +
             (it.optional ? '<button type="button" class="skip" data-skip="' + it.id + '" aria-pressed="false">لم أجرّب هذا بعد</button>' : "") +
             "</div>";
@@ -53,7 +53,7 @@
     if (!sel.length) { $("#trackQuestions").innerHTML = '<div class="empty-note">لم تختر أي مسار — يمكنك المتابعة مباشرة.</div>'; return; }
     $("#trackQuestions").innerHTML = sel.map(function (t) {
       var tr = state.tracks[t.id];
-      return '<div class="card q track-q" id="q-track-' + t.id + '">' +
+      return '<div class="q track-q" id="q-track-' + t.id + '">' +
         '<div class="q-head"><div class="q-icon">' + icon(t.icon) + '</div><div><p class="q-title">' + t.question + "</p>" +
         '<p class="q-hint">المحتوى، المدرب أو المنظّم، والفائدة التي خرجت بها.</p></div></div>' +
         nameField(t, tr) +
@@ -77,7 +77,7 @@
 
   function buildNps() {
     var h = "";
-    for (var i = 0; i <= 10; i++) h += '<button type="button" role="radio" aria-checked="false" data-nps="' + i + '">' + i + "</button>";
+    for (var i = 0; i <= 10; i++) h += '<button type="button" role="radio" aria-checked="false" data-nps="' + i + '" aria-label="' + i + ' من 10">' + i + "</button>";
     $("#nps").innerHTML = h;
   }
 
@@ -87,12 +87,18 @@
   function markScale(key, v) {
     var el = document.querySelector('.scale[data-key="' + key + '"]');
     if (!el) return;
-    $$("button", el).forEach(function (b) { b.setAttribute("aria-checked", String(Number(b.dataset.v) === v)); });
+    $$("button", el).forEach(function (b) {
+      var n = Number(b.dataset.v);
+      b.setAttribute("aria-checked", String(n === v));
+      b.classList.toggle("on", v > 0 && n < v);
+    });
+    var lbl = document.querySelector('[data-val="' + key + '"]');
+    if (lbl) lbl.textContent = v ? SCALE[v - 1].label : "";
   }
 
   document.addEventListener("click", function (e) {
     var b;
-    if ((b = e.target.closest(".scale button"))) {
+    if ((b = e.target.closest(".scale[data-key] button"))) {
       var key = b.parentNode.dataset.key, v = Number(b.dataset.v);
       if (key.indexOf("track:") === 0) state.tracks[key.slice(6)].score = v;
       else { state.scores[key] = v; delete state.skipped[key]; var sk = $('[data-skip="' + key + '"]'); if (sk) sk.setAttribute("aria-pressed", "false"); }
@@ -119,7 +125,11 @@
     if ((b = e.target.closest("[data-track]"))) { toggleTrack(b.dataset.track, !state.tracks[b.dataset.track]); return; }
     if ((b = e.target.closest("[data-nps]"))) {
       state.nps = Number(b.dataset.nps);
-      $$("#nps button").forEach(function (x) { x.setAttribute("aria-checked", String(x === b)); });
+      $$("#nps button").forEach(function (x) {
+        var n = Number(x.dataset.nps);
+        x.setAttribute("aria-checked", String(x === b)); x.classList.toggle("on", n < state.nps);
+      });
+      $("#npsVal").textContent = state.nps >= 9 ? "سأنصح به بالتأكيد" : state.nps >= 7 ? "غالباً سأنصح به" : state.nps >= 4 ? "ربما" : "مستبعد";
       $("#npsCard").classList.add("done"); $("#npsCard").classList.remove("missing");
     }
   });
@@ -170,8 +180,9 @@
   function go(step) {
     state.step = step;
     $$(".step").forEach(function (s) { s.classList.toggle("active", Number(s.dataset.step) === step); });
-    $("#progressBar").style.width = Math.min(100, (step / LAST_STEP) * 100) + "%";
-    $("#stepsMeta").textContent = step >= 1 && step <= LAST_STEP ? "الخطوة " + AR_NUM[step] + " من " + AR_NUM[LAST_STEP] : "";
+    $("#steps").hidden = !(step >= 1 && step <= LAST_STEP);
+    $$("#progress i").forEach(function (el, i) { el.classList.toggle("on", i < step); });
+    $("#stepsMeta").textContent = "الخطوة " + AR_NUM[Math.min(step, LAST_STEP)] + " من " + AR_NUM[LAST_STEP];
     $("#backBtn").classList.toggle("hidden", step === 0 || step === THANKS);
     $(".navbar").style.display = step === THANKS ? "none" : "";
     $("#nextBtn").textContent = step === 0 ? "لنبدأ" : step === LAST_STEP ? "إرسال التقييم" : "التالي";
@@ -183,7 +194,7 @@
     if (miss.length) {
       miss.forEach(function (m) { if (m) m.classList.add("missing"); });
       if (miss[0]) miss[0].scrollIntoView({ behavior: "smooth", block: "center" });
-      toast(state.step === 5 ? "اختر رقماً من 0 إلى 10" : "بقي " + miss.length + " " + (miss.length === 1 ? "سؤال" : "أسئلة") + " — اختر تقييماً أو «لم أجرّب»");
+      toast(state.step === 5 ? "اختر رقماً من 0 إلى 10" : miss.length === 1 ? "بقي سؤال واحد بدون تقييم" : "بقيت " + miss.length + " أسئلة بدون تقييم");
       return;
     }
     if (state.step === LAST_STEP) return submit();
