@@ -277,7 +277,7 @@
     var d = range && h != null && ph != null ? h - ph : null;
     return '<div class="gauge-box"><svg class="gauge" viewBox="0 0 220 128" aria-hidden="true">' +
       '<path class="g-track" d="M20 115 A90 90 0 0 1 200 115" fill="none" stroke-width="14" stroke-linecap="round" pathLength="100"/>' +
-      '<defs><linearGradient id="gg" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#7053DA"/><stop offset="1" stop-color="#1D3A89"/></linearGradient></defs>' +
+      '<defs><linearGradient id="gg" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#3A4CC4"/><stop offset="1" stop-color="#1A2873"/></linearGradient></defs>' +
       (h != null ? '<path d="M20 115 A90 90 0 0 1 200 115" fill="none" stroke="url(#gg)" stroke-width="14" stroke-linecap="round" pathLength="100" stroke-dasharray="' + Math.max(1, h) + ' 100"/>' : "") +
       '<text x="110" y="102" text-anchor="middle" font-size="46" font-weight="700">' + (h == null ? "–" : h) + "</text>" +
       '<text x="110" y="124" text-anchor="middle" font-size="12" style="fill:var(--muted)">صحة المكان من 100</text></svg>' +
@@ -338,10 +338,10 @@
       "</div>";
   }
   var KPI_TILES = [
-    ["violet", '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>'],
+    ["blue", '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>'],
     ["blue", '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>'],
-    ["green", '<circle cx="12" cy="12" r="9"/><path d="M8.5 14a4.5 4.5 0 007 0M9 9.5h.01M15 9.5h.01"/>'],
-    ["peach", '<path d="M3 10v4a1 1 0 001 1h3l6 4V5L7 9H4a1 1 0 00-1 1z"/><path d="M17 8.5a5 5 0 010 7"/>']
+    ["blue", '<circle cx="12" cy="12" r="9"/><path d="M8.5 14a4.5 4.5 0 007 0M9 9.5h.01M15 9.5h.01"/>'],
+    ["blue", '<path d="M3 10v4a1 1 0 001 1h3l6 4V5L7 9H4a1 1 0 00-1 1z"/><path d="M17 8.5a5 5 0 010 7"/>']
   ];
   var kpiIdx = 0;
   function kpi(label, val, suffix, sub, sp) {
