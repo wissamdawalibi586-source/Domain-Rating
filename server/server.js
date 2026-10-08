@@ -15,6 +15,8 @@ const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex");
 const SESSION_HOURS = 12;
+// حد التقييمات لكل IP بالساعة — الطلاب في المكان يشتركون غالباً بنفس IP، لذا الحد مرتفع
+const RATE_LIMIT_PER_HOUR = Number(process.env.RATE_LIMIT_PER_HOUR) || 200;
 
 if (!process.env.DATABASE_URL) {
   console.error("DATABASE_URL غير معرّف — أضف رابط قاعدة بيانات Neon في متغيرات البيئة.");
@@ -130,7 +132,7 @@ app.get("/api/health", async (req, res) => {
   catch (e) { res.status(503).json({ ok: false, db: false }); }
 });
 
-app.post("/api/ratings", limiter(10, 60 * 60 * 1000), async (req, res) => {
+app.post("/api/ratings", limiter(RATE_LIMIT_PER_HOUR, 60 * 60 * 1000), async (req, res) => {
   if (req.body && req.body.website) return res.json({ ok: true }); // روبوت
   const r = clean(req.body);
   if (!Object.keys(r.scores).length) return res.status(400).json({ ok: false, error: "تقييم فارغ" });

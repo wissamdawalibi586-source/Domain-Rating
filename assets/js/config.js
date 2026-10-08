@@ -12,7 +12,8 @@ window.DOMAINS_CONFIG = {
   DEMO_PASSWORD_HASH: "d8f8781f71409dcbabbc74a24ad98e095de096504741fc254181d9e2aadb3efd",
 
   // عدد الساعات قبل أن يُسمح لنفس الجهاز بإرسال تقييم جديد (0 = بلا حد).
-  RATE_COOLDOWN_HOURS: 12,
+  // ⚠️ فترة التطوير: 0 = بلا حد. أعِدها إلى 12 قبل الإطلاق للطلاب.
+  RATE_COOLDOWN_HOURS: 0,
 
   // روابط تظهر في صفحة الشكر (اتركها فارغة لإخفائها).
   LINKS: {
