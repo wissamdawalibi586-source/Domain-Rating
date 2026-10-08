@@ -20,6 +20,10 @@ if (!process.env.DATABASE_URL) {
   console.error("DATABASE_URL غير معرّف — أضف رابط قاعدة بيانات Neon في متغيرات البيئة.");
   process.exit(1);
 }
+if (/\.\.\.|\*\*\*/.test(process.env.DATABASE_URL) || !/^postgres(ql)?:\/\//.test(process.env.DATABASE_URL)) {
+  console.error("DATABASE_URL يبدو مثالاً وليس رابطاً حقيقياً (فيه ... أو ***). انسخه كاملاً من Neon ← Connect ← Copy snippet.");
+  process.exit(1);
+}
 if (!ADMIN_PASSWORD) console.warn("تحذير: ADMIN_PASSWORD غير معرّف — لوحة الإدارة معطّلة.");
 
 const isLocalDb = /localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL);
